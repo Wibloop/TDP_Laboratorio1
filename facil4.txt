@@ -1,0 +1,25 @@
+[META]
+NAME = DOS_BLOQUES
+WIDTH = 10
+HEIGHT = 8
+STEP_LIMIT = 80
+
+[BLOCK]
+1 COLOR=a WIDTH=2 HEIGHT=1 INIT_X=3 INIT_Y=2 GEOMETRY=1 1
+2 COLOR=b WIDTH=1 HEIGHT=2 INIT_X=4 INIT_Y=6 GEOMETRY=1 1
+
+[WALL]
+##########
+#        #
+#        #
+#        #
+#        #
+#        #
+#        #
+##########
+
+[EXIT]
+COLOR=a X=3 Y=9 ORIENTATION=V LI=1 LF=1 STEP=0
+COLOR=b X=1 Y=9 ORIENTATION=V LI=2 LF=2 STEP=0
+
+[GATE]
