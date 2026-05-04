@@ -1,5 +1,5 @@
 #include <iostream>
-#include "Stack.h"
+#include "../src/Stack.h"
 
 // El uso de namespace std está permitido para aumentar la legibilidad [5]
 using namespace std;

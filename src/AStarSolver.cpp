@@ -56,8 +56,9 @@ void AStarSolver::trackState(GameState *state) {
 //   4. Se calcula la heuristica
 //   5. Si no esta en el ClosedSet, se agrega al OpenSet
 //
-//   El formato de movimiento es: "D1,3" (Direccion + ID_bloque + , + celdas)
-//   donde D=direccion, 1=ID del bloque, 3=cantidad de celdas movidas.
+//   El formato de movimiento es: "DA,3" (Direccion + ID_bloque->Color + , +
+//   celdas) donde D=direccion, A=ID del bloque transformado a color, 3=cantidad
+//   de celdas movidas.
 void AStarSolver::generateSuccessors(GameState *current) {
   const Board &curBoard = current->getBoard();
   int numBlocks = curBoard.getNumBlocks();
@@ -80,7 +81,9 @@ void AStarSolver::generateSuccessors(GameState *current) {
       GameState *child = new GameState(*current);
       child->setEvacuated(bi, true);
       child->getBoard().removeBlock(bi);
-      child->setG(current->getG() + 1); // Costo de entrar a la puerta
+      // Se calcula el costo + 1 para dar el movimineto final de entrar a la
+      // puerta
+      child->setG(current->getG() + 1);
       child->setParent(current);
 
       char desc[16];
@@ -147,9 +150,6 @@ void AStarSolver::generateSuccessors(GameState *current) {
         desc[pos++] = '0' + (dist % 10);
         desc[pos] = '\0';
         child->setMoveDesc(desc);
-
-        // Ya no se evacua de forma automática tras el movimiento
-        // (Se generará un paso extra en el próximo estado)
 
         // Calcular heuristica
         child->computeHeuristic();

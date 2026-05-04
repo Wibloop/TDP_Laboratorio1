@@ -1,7 +1,7 @@
 #include "GameState.h"
 #include <iostream>
 
-// Implementacion de GameState - nodo del arbol de busqueda A*
+// Implementacion de GameState. Nodo del arbol de busqueda A*
 
 // Metodo: Constructor -> GameState
 // Descripcion: Crea un estado de juego. Inicializa g=0, h=0, padre=nullptr.
@@ -93,7 +93,7 @@ GameState::~GameState() {
   delete[] evacuated;
 }
 
-// --- Getters ---
+// Getters
 Board &GameState::getBoard() { return board; }
 const Board &GameState::getBoard() const { return board; }
 int GameState::getG() const { return g; }
@@ -112,7 +112,7 @@ bool GameState::isBlockEvacuated(int index) const {
   return evacuated[index];
 }
 
-// --- Setters ---
+// Setters
 void GameState::setG(int g) { this->g = g; }
 void GameState::setH(int h) { this->h = h; }
 void GameState::setParent(GameState *parent) { this->parent = parent; }
@@ -237,8 +237,6 @@ void GameState::computeHeuristic() {
     int bh = b.getHeight();
     int bx = b.getX(); // columna
     int by = b.getY(); // fila
-    int bcCol = bx + bw / 2;
-    int bcRow = by + bh / 2;
     int minDist = 99999;
     bool hasValidExit = false;
 
@@ -325,9 +323,10 @@ void GameState::computeHeuristic() {
   this->h = totalH;
 }
 
-bool GameState::canEvacuate(int blockIndex, char& outDir, int& outDist) const {
-  if (evacuated[blockIndex]) return false;
-  const Block& b = board.getBlock(blockIndex);
+bool GameState::canEvacuate(int blockIndex, char &outDir, int &outDist) const {
+  if (evacuated[blockIndex])
+    return false;
+  const Block &b = board.getBlock(blockIndex);
   char blockColor = b.getColor();
   int bx = b.getX();
   int by = b.getY();
@@ -337,7 +336,8 @@ bool GameState::canEvacuate(int blockIndex, char& outDir, int& outDist) const {
   int boardH = board.getHeight();
 
   for (int e = 0; e < numExits; e++) {
-    if (exits[e].getColor() != blockColor) continue;
+    if (exits[e].getColor() != blockColor)
+      continue;
     int eCol = exits[e].getX();
     int eRow = exits[e].getY();
     char ori = exits[e].getOrientation();
@@ -346,21 +346,29 @@ bool GameState::canEvacuate(int blockIndex, char& outDir, int& outDist) const {
     if (ori == 'H') {
       if (eCol == 0 && bx == 1) {
         if (bh <= cs && by >= eRow && by + bh <= eRow + cs) {
-          outDir = 'L'; outDist = 1; return true;
+          outDir = 'L';
+          outDist = 1;
+          return true;
         }
       } else if (eCol == boardW - 1 && bx + bw == boardW - 1) {
         if (bh <= cs && by >= eRow && by + bh <= eRow + cs) {
-          outDir = 'R'; outDist = 1; return true;
+          outDir = 'R';
+          outDist = 1;
+          return true;
         }
       }
     } else if (ori == 'V') {
       if (eRow == 0 && by == 1) {
         if (bw <= cs && bx >= eCol && bx + bw <= eCol + cs) {
-          outDir = 'U'; outDist = 1; return true;
+          outDir = 'U';
+          outDist = 1;
+          return true;
         }
       } else if (eRow == boardH - 1 && by + bh == boardH - 1) {
         if (bw <= cs && bx >= eCol && bx + bw <= eCol + cs) {
-          outDir = 'D'; outDist = 1; return true;
+          outDir = 'D';
+          outDist = 1;
+          return true;
         }
       }
     }

@@ -39,9 +39,3 @@
 
 # debug information files
 *.dwo
-
-# test files
-test_HashSet.cpp
-test_MinHeap.cpp
-test_AStarSolver.cpp
-test_GameState.cpp

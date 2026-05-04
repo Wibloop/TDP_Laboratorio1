@@ -11,19 +11,19 @@
 
 # --- Variables de compilacion ---
 CXX = g++
-CXXFLAGS = -Wall -g -std=c++11
+CXXFLAGS = -Wall -g -std=c++11 -Isrc
 
 # --- Objetos comunes (clases base) ---
-OBJ_BLOCK = Block.o
-OBJ_BOARD = Board.o
-OBJ_STACK = Stack.o
-OBJ_EXIT = Exit.o
-OBJ_GATE = Gate.o
-OBJ_GAMESTATE = GameState.o
-OBJ_MINHEAP = MinHeap.o
-OBJ_HASHSET = HashSet.o
-OBJ_FILEPARSER = FileParser.o
-OBJ_ASTARSOLVER = AStarSolver.o
+OBJ_BLOCK = src/Block.o
+OBJ_BOARD = src/Board.o
+OBJ_STACK = src/Stack.o
+OBJ_EXIT = src/Exit.o
+OBJ_GATE = src/Gate.o
+OBJ_GAMESTATE = src/GameState.o
+OBJ_MINHEAP = src/MinHeap.o
+OBJ_HASHSET = src/HashSet.o
+OBJ_FILEPARSER = src/FileParser.o
+OBJ_ASTARSOLVER = src/AStarSolver.o
 
 # Todos los objetos que el programa principal necesita
 OBJ_MAIN = $(OBJ_BLOCK) $(OBJ_BOARD) $(OBJ_EXIT) $(OBJ_GATE) $(OBJ_GAMESTATE) \
@@ -33,93 +33,123 @@ OBJ_MAIN = $(OBJ_BLOCK) $(OBJ_BOARD) $(OBJ_EXIT) $(OBJ_GATE) $(OBJ_GAMESTATE) \
 all: main tests
 
 # --- Tests agrupados ---
-tests: test_Stack test_Block test_MinHeap test_HashSet test_GameState
+tests: test_Stack test_Block test_MinHeap test_HashSet test_GameState test_Exit test_Gate test_Board test_FileParser test_AStarSolver
 
 # ============================================
 # Reglas de Enlazado (Generacion de Ejecutables)
 # ============================================
 
 # Programa principal
-main: main.o $(OBJ_MAIN)
-	$(CXX) $(CXXFLAGS) -o main main.o $(OBJ_MAIN)
+main: src/main.o $(OBJ_MAIN)
+	$(CXX) $(CXXFLAGS) -o main src/main.o $(OBJ_MAIN)
 
 # Tests individuales
-test_Stack: test_Stack.o $(OBJ_STACK)
-	$(CXX) $(CXXFLAGS) -o test_Stack test_Stack.o $(OBJ_STACK)
+test_Stack: test/test_Stack.o $(OBJ_STACK)
+	$(CXX) $(CXXFLAGS) -o test_Stack test/test_Stack.o $(OBJ_STACK)
 
-test_Block: test_Block.o $(OBJ_BLOCK)
-	$(CXX) $(CXXFLAGS) -o test_Block test_Block.o $(OBJ_BLOCK)
+test_Block: test/test_Block.o $(OBJ_BLOCK)
+	$(CXX) $(CXXFLAGS) -o test_Block test/test_Block.o $(OBJ_BLOCK)
 
-test_MinHeap: test_MinHeap.o $(OBJ_MINHEAP) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
-	$(CXX) $(CXXFLAGS) -o test_MinHeap test_MinHeap.o $(OBJ_MINHEAP) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+test_MinHeap: test/test_MinHeap.o $(OBJ_MINHEAP) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+	$(CXX) $(CXXFLAGS) -o test_MinHeap test/test_MinHeap.o $(OBJ_MINHEAP) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
 
-test_HashSet: test_HashSet.o $(OBJ_HASHSET) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
-	$(CXX) $(CXXFLAGS) -o test_HashSet test_HashSet.o $(OBJ_HASHSET) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+test_HashSet: test/test_HashSet.o $(OBJ_HASHSET) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+	$(CXX) $(CXXFLAGS) -o test_HashSet test/test_HashSet.o $(OBJ_HASHSET) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
 
-test_GameState: test_GameState.o $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
-	$(CXX) $(CXXFLAGS) -o test_GameState test_GameState.o $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+test_GameState: test/test_GameState.o $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+	$(CXX) $(CXXFLAGS) -o test_GameState test/test_GameState.o $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+
+test_Exit: test/test_Exit.o $(OBJ_EXIT)
+	$(CXX) $(CXXFLAGS) -o test_Exit test/test_Exit.o $(OBJ_EXIT)
+
+test_Gate: test/test_Gate.o $(OBJ_GATE)
+	$(CXX) $(CXXFLAGS) -o test_Gate test/test_Gate.o $(OBJ_GATE)
+
+test_Board: test/test_Board.o $(OBJ_BOARD) $(OBJ_BLOCK)
+	$(CXX) $(CXXFLAGS) -o test_Board test/test_Board.o $(OBJ_BOARD) $(OBJ_BLOCK)
+
+test_FileParser: test/test_FileParser.o $(OBJ_FILEPARSER) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+	$(CXX) $(CXXFLAGS) -o test_FileParser test/test_FileParser.o $(OBJ_FILEPARSER) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+
+test_AStarSolver: test/test_AStarSolver.o $(OBJ_ASTARSOLVER) $(OBJ_FILEPARSER) $(OBJ_HASHSET) $(OBJ_MINHEAP) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
+	$(CXX) $(CXXFLAGS) -o test_AStarSolver test/test_AStarSolver.o $(OBJ_ASTARSOLVER) $(OBJ_FILEPARSER) $(OBJ_HASHSET) $(OBJ_MINHEAP) $(OBJ_GAMESTATE) $(OBJ_BOARD) $(OBJ_BLOCK) $(OBJ_EXIT) $(OBJ_GATE)
 
 # ============================================
 # Reglas de Compilacion de Objetos (.o)
 # ============================================
 
 # Programa principal
-main.o: main.cpp FileParser.h AStarSolver.h
-	$(CXX) $(CXXFLAGS) -c main.cpp
+src/main.o: src/main.cpp src/FileParser.h src/AStarSolver.h
+	$(CXX) $(CXXFLAGS) -c src/main.cpp -o src/main.o
 
 # Clases base
-Block.o: Block.cpp Block.h
-	$(CXX) $(CXXFLAGS) -c Block.cpp
+src/Block.o: src/Block.cpp src/Block.h
+	$(CXX) $(CXXFLAGS) -c src/Block.cpp -o src/Block.o
 
-Board.o: Board.cpp Board.h Block.h
-	$(CXX) $(CXXFLAGS) -c Board.cpp
+src/Board.o: src/Board.cpp src/Board.h src/Block.h
+	$(CXX) $(CXXFLAGS) -c src/Board.cpp -o src/Board.o
 
-Stack.o: Stack.cpp Stack.h
-	$(CXX) $(CXXFLAGS) -c Stack.cpp
+src/Stack.o: src/Stack.cpp src/Stack.h
+	$(CXX) $(CXXFLAGS) -c src/Stack.cpp -o src/Stack.o
 
-Exit.o: Exit.cpp Exit.h
-	$(CXX) $(CXXFLAGS) -c Exit.cpp
+src/Exit.o: src/Exit.cpp src/Exit.h
+	$(CXX) $(CXXFLAGS) -c src/Exit.cpp -o src/Exit.o
 
-Gate.o: Gate.cpp Gate.h
-	$(CXX) $(CXXFLAGS) -c Gate.cpp
+src/Gate.o: src/Gate.cpp src/Gate.h
+	$(CXX) $(CXXFLAGS) -c src/Gate.cpp -o src/Gate.o
 
 # Clases nuevas
-GameState.o: GameState.cpp GameState.h Board.h Block.h Exit.h Gate.h
-	$(CXX) $(CXXFLAGS) -c GameState.cpp
+src/GameState.o: src/GameState.cpp src/GameState.h src/Board.h src/Block.h src/Exit.h src/Gate.h
+	$(CXX) $(CXXFLAGS) -c src/GameState.cpp -o src/GameState.o
 
-MinHeap.o: MinHeap.cpp MinHeap.h GameState.h
-	$(CXX) $(CXXFLAGS) -c MinHeap.cpp
+src/MinHeap.o: src/MinHeap.cpp src/MinHeap.h src/GameState.h
+	$(CXX) $(CXXFLAGS) -c src/MinHeap.cpp -o src/MinHeap.o
 
-HashSet.o: HashSet.cpp HashSet.h GameState.h
-	$(CXX) $(CXXFLAGS) -c HashSet.cpp
+src/HashSet.o: src/HashSet.cpp src/HashSet.h src/GameState.h
+	$(CXX) $(CXXFLAGS) -c src/HashSet.cpp -o src/HashSet.o
 
-FileParser.o: FileParser.cpp FileParser.h GameState.h
-	$(CXX) $(CXXFLAGS) -c FileParser.cpp
+src/FileParser.o: src/FileParser.cpp src/FileParser.h src/GameState.h
+	$(CXX) $(CXXFLAGS) -c src/FileParser.cpp -o src/FileParser.o
 
-AStarSolver.o: AStarSolver.cpp AStarSolver.h GameState.h MinHeap.h HashSet.h
-	$(CXX) $(CXXFLAGS) -c AStarSolver.cpp
+src/AStarSolver.o: src/AStarSolver.cpp src/AStarSolver.h src/GameState.h src/MinHeap.h src/HashSet.h
+	$(CXX) $(CXXFLAGS) -c src/AStarSolver.cpp -o src/AStarSolver.o
 
 # Objetos de tests
-test_Stack.o: test_Stack.cpp Stack.h
-	$(CXX) $(CXXFLAGS) -c test_Stack.cpp
+test/test_Stack.o: test/test_Stack.cpp src/Stack.h
+	$(CXX) $(CXXFLAGS) -c test/test_Stack.cpp -o test/test_Stack.o
 
-test_Block.o: test_Block.cpp Block.h
-	$(CXX) $(CXXFLAGS) -c test_Block.cpp
+test/test_Block.o: test/test_Block.cpp src/Block.h
+	$(CXX) $(CXXFLAGS) -c test/test_Block.cpp -o test/test_Block.o
 
-test_MinHeap.o: test_MinHeap.cpp MinHeap.h GameState.h
-	$(CXX) $(CXXFLAGS) -c test_MinHeap.cpp
+test/test_MinHeap.o: test/test_MinHeap.cpp src/MinHeap.h src/GameState.h
+	$(CXX) $(CXXFLAGS) -c test/test_MinHeap.cpp -o test/test_MinHeap.o
 
-test_HashSet.o: test_HashSet.cpp HashSet.h GameState.h
-	$(CXX) $(CXXFLAGS) -c test_HashSet.cpp
+test/test_HashSet.o: test/test_HashSet.cpp src/HashSet.h src/GameState.h
+	$(CXX) $(CXXFLAGS) -c test/test_HashSet.cpp -o test/test_HashSet.o
 
-test_GameState.o: test_GameState.cpp GameState.h
-	$(CXX) $(CXXFLAGS) -c test_GameState.cpp
+test/test_GameState.o: test/test_GameState.cpp src/GameState.h
+	$(CXX) $(CXXFLAGS) -c test/test_GameState.cpp -o test/test_GameState.o
+
+test/test_Exit.o: test/test_Exit.cpp src/Exit.h
+	$(CXX) $(CXXFLAGS) -c test/test_Exit.cpp -o test/test_Exit.o
+
+test/test_Gate.o: test/test_Gate.cpp src/Gate.h
+	$(CXX) $(CXXFLAGS) -c test/test_Gate.cpp -o test/test_Gate.o
+
+test/test_Board.o: test/test_Board.cpp src/Board.h
+	$(CXX) $(CXXFLAGS) -c test/test_Board.cpp -o test/test_Board.o
+
+test/test_FileParser.o: test/test_FileParser.cpp src/FileParser.h
+	$(CXX) $(CXXFLAGS) -c test/test_FileParser.cpp -o test/test_FileParser.o
+
+test/test_AStarSolver.o: test/test_AStarSolver.cpp src/AStarSolver.h
+	$(CXX) $(CXXFLAGS) -c test/test_AStarSolver.cpp -o test/test_AStarSolver.o
 
 # ============================================
 # Regla de Limpieza
 # ============================================
 clean:
-	rm -f *.o main test_Stack test_Block test_MinHeap test_HashSet test_GameState
+	rm -f src/*.o test/*.o main test_Stack test_Block test_MinHeap test_HashSet test_GameState test_Exit test_Gate test_Board test_FileParser test_AStarSolver
 
 # ============================================
 # Phony targets (no son archivos reales)
