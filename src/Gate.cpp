@@ -149,7 +149,13 @@ char Gate::getColorAtStep(int currentStep) const {
     if (step == 0 || colorInitial == colorFinal) {
         return colorInitial;
     }
-    int range = (colorFinal - colorInitial) + 1; // Cantidad de colores en el ciclo
+    int range = colorFinal - colorInitial;
+    int dir = 1;
+    if (range < 0) {
+        range = -range;
+        dir = -1;
+    }
+    range += 1;
     int cyclePos = (currentStep / step) % range;
-    return (char)(colorInitial + cyclePos);
+    return (char)(colorInitial + (cyclePos * dir));
 }

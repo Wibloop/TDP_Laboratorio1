@@ -217,7 +217,7 @@ bool AStarSolver::solve(GameState *initialState) {
   int iterations = 0;
   // Limite de iteraciones para proteger el uso de CPU y evitar que el proceso
   // se congele Debido al inmenso arbol de estados posibles el solver podria
-  // perderse por minutos o horas Por precaucion se corta la busqueda tras 300k
+  // perderse por minutos o horas Por precaucion se corta la busqueda tras 1000k
   // iteraciones
   int maxIterations = 10000000;
 
