@@ -4,8 +4,9 @@
 
 // Implementacion de GameState. Nodo del arbol de busqueda A*
 
-// Inicializa un nuevo estado del juego almacenando una copia profunda de todos sus parametros
-// Se clonan salidas compuertas y el tablero para independizar la simulacion de este estado
+// Inicializa un nuevo estado del juego almacenando una copia profunda de todos
+// sus parametros Se clonan salidas compuertas y el tablero para independizar la
+// simulacion de este estado
 GameState::GameState(const Board &board, Exit *exits, int numExits, Gate *gates,
                      int numGates)
     : board(board) {
@@ -30,7 +31,8 @@ GameState::GameState(const Board &board, Exit *exits, int numExits, Gate *gates,
   }
 }
 
-// Constructor de copia que realiza un deep copy completo del estado y todas sus matrices dinamicas
+// Constructor de copia que realiza un deep copy completo del estado y todas sus
+// matrices dinamicas
 GameState::GameState(const GameState &other) : board(other.board) {
   numExits = other.numExits;
   numGates = other.numGates;
@@ -110,8 +112,8 @@ void GameState::setG(int g) { this->g = g; }
 void GameState::setH(int h) { this->h = h; }
 void GameState::setParent(GameState *parent) { this->parent = parent; }
 
-// Copia la cadena de texto descriptiva del ultimo movimiento al buffer del estado
-// Limitado por seguridad a 15 caracteres
+// Copia la cadena de texto descriptiva del ultimo movimiento al buffer del
+// estado Limitado por seguridad a 15 caracteres
 void GameState::setMoveDesc(const char *desc) {
   int i = 0;
   while (desc[i] != '\0' && i < 15) {
@@ -126,11 +128,13 @@ void GameState::setEvacuated(int index, bool value) {
     evacuated[index] = value;
 }
 
-// Retorna true si todos los bloques que tienen al menos una salida compatible ya fueron evacuados
-// Los bloques sin salida compatible o que fisicamente no caben actuan como obstaculos permanentes
-// Para que un bloque quepa debe cumplir la condicion geometrica del agujero
-// H indica un hoyo horizontal por lo que el bloque se mueve verticalmente y su ancho debe caber
-// V indica un hoyo vertical por lo que el bloque se mueve horizontalmente y su altura debe caber
+// Retorna true si todos los bloques que tienen al menos una salida compatible
+// ya fueron evacuados Los bloques sin salida compatible o que fisicamente no
+// caben actuan como obstaculos permanentes Para que un bloque quepa debe
+// cumplir la condicion geometrica del agujero H indica un hoyo horizontal por
+// lo que el bloque se mueve verticalmente y su ancho debe caber V indica un
+// hoyo vertical por lo que el bloque se mueve horizontalmente y su altura debe
+// caber
 bool GameState::isSolved() const {
   int n = board.getNumBlocks();
   for (int i = 0; i < n; i++) {
@@ -166,40 +170,43 @@ bool GameState::isSolved() const {
 
 // Helpers temporales
 static int gcd_temporal(int a, int b) {
-    while (b != 0) {
-        int t = b;
-        b = a % b;
-        a = t;
-    }
-    return a;
+  while (b != 0) {
+    int t = b;
+    b = a % b;
+    a = t;
+  }
+  return a;
 }
 
-static int getLevelPeriod(Exit* exits, int numExits, Gate* gates, int numGates) {
-    int currentLcm = 1;
-    for (int e = 0; e < numExits; e++) {
-        int step = exits[e].getStep();
-        if (step > 0) {
-            int range = exits[e].getLineEnd() - exits[e].getLineStart();
-            if (range < 0) range = -range;
-            if (range > 0) {
-                int period = step * 2 * range;
-                currentLcm = (currentLcm / gcd_temporal(currentLcm, period)) * period;
-            }
-        }
+static int getLevelPeriod(Exit *exits, int numExits, Gate *gates,
+                          int numGates) {
+  int currentLcm = 1;
+  for (int e = 0; e < numExits; e++) {
+    int step = exits[e].getStep();
+    if (step > 0) {
+      int range = exits[e].getLineEnd() - exits[e].getLineStart();
+      if (range < 0)
+        range = -range;
+      if (range > 0) {
+        int period = step * 2 * range;
+        currentLcm = (currentLcm / gcd_temporal(currentLcm, period)) * period;
+      }
     }
-    for (int i = 0; i < numGates; i++) {
-        int step = gates[i].getStep();
-        if (step > 0) {
-            int range = gates[i].getColorFinal() - gates[i].getColorInitial();
-            if (range < 0) range = -range;
-            range += 1;
-            if (range > 0) {
-                int period = step * range;
-                currentLcm = (currentLcm / gcd_temporal(currentLcm, period)) * period;
-            }
-        }
+  }
+  for (int i = 0; i < numGates; i++) {
+    int step = gates[i].getStep();
+    if (step > 0) {
+      int range = gates[i].getColorFinal() - gates[i].getColorInitial();
+      if (range < 0)
+        range = -range;
+      range += 1;
+      if (range > 0) {
+        int period = step * range;
+        currentLcm = (currentLcm / gcd_temporal(currentLcm, period)) * period;
+      }
     }
-    return currentLcm;
+  }
+  return currentLcm;
 }
 
 // Metodo: computeHash
@@ -271,32 +278,39 @@ void GameState::computeHeuristic() {
       continue;
     const Block &b = board.getBlock(i);
     char blockColor = b.getColor();
-    
+
     int bx, by, bw, bh;
     int orig_bw = b.getWidth();
     int orig_bh = b.getHeight();
-    bool* geom = b.getGeometry();
+    bool *geom = b.getGeometry();
     int minCol = orig_bw, maxCol = -1;
     int minRow = orig_bh, maxRow = -1;
     for (int r = 0; r < orig_bh; r++) {
-        for (int c = 0; c < orig_bw; c++) {
-            if (geom == nullptr || geom[r * orig_bw + c]) {
-                if (c < minCol) minCol = c;
-                if (c > maxCol) maxCol = c;
-                if (r < minRow) minRow = r;
-                if (r > maxRow) maxRow = r;
-            }
+      for (int c = 0; c < orig_bw; c++) {
+        if (geom == nullptr || geom[r * orig_bw + c]) {
+          if (c < minCol)
+            minCol = c;
+          if (c > maxCol)
+            maxCol = c;
+          if (r < minRow)
+            minRow = r;
+          if (r > maxRow)
+            maxRow = r;
         }
+      }
     }
     if (maxCol == -1) {
-        bx = b.getX(); by = b.getY(); bw = orig_bw; bh = orig_bh;
+      bx = b.getX();
+      by = b.getY();
+      bw = orig_bw;
+      bh = orig_bh;
     } else {
-        bx = b.getX() + minCol;
-        by = b.getY() + minRow;
-        bw = maxCol - minCol + 1;
-        bh = maxRow - minRow + 1;
+      bx = b.getX() + minCol;
+      by = b.getY() + minRow;
+      bw = maxCol - minCol + 1;
+      bh = maxRow - minRow + 1;
     }
-    
+
     int minDist = 99999;
     bool hasValidExit = false;
 
@@ -324,28 +338,30 @@ void GameState::computeHeuristic() {
             int eY = exits[e].getY();
             int realTargetX1 = eX;
             int realTargetX2 = eX;
-            if (eX < board.getWidth() / 2) {
-              for (int y = eY; y < eY + maxSize && y < board.getHeight(); y++) {
-                for (int x = eX; x < board.getWidth(); x++) {
-                  if (board.getCell(x, y) == 1) {
-                    if (x > realTargetX1) realTargetX1 = x;
-                    break;
-                  }
-                }
-              }
-              realTargetX1 += 1;
-              dCol = (bx > realTargetX1) ? bx - realTargetX1 : 0;
-            } else {
+            if (bx <= eX) {
               for (int y = eY; y < eY + maxSize && y < board.getHeight(); y++) {
                 for (int x = eX; x >= 0; x--) {
                   if (board.getCell(x, y) == 1) {
-                    if (x < realTargetX2) realTargetX2 = x;
+                    if (x < realTargetX2)
+                      realTargetX2 = x;
                     break;
                   }
                 }
               }
               realTargetX2 -= bw;
               dCol = (bx < realTargetX2) ? realTargetX2 - bx : 0;
+            } else {
+              for (int y = eY; y < eY + maxSize && y < board.getHeight(); y++) {
+                for (int x = eX; x < board.getWidth(); x++) {
+                  if (board.getCell(x, y) == 1) {
+                    if (x > realTargetX1)
+                      realTargetX1 = x;
+                    break;
+                  }
+                }
+              }
+              realTargetX1 += 1;
+              dCol = (bx > realTargetX1) ? bx - realTargetX1 : 0;
             }
           } else {
             int validMinX = exits[e].getX();
@@ -363,28 +379,30 @@ void GameState::computeHeuristic() {
             int eY = exits[e].getY();
             int realTargetY1 = eY;
             int realTargetY2 = eY;
-            if (eY < board.getHeight() / 2) {
-              for (int x = eX; x < eX + maxSize && x < board.getWidth(); x++) {
-                for (int y = eY; y < board.getHeight(); y++) {
-                  if (board.getCell(x, y) == 1) {
-                    if (y > realTargetY1) realTargetY1 = y;
-                    break;
-                  }
-                }
-              }
-              realTargetY1 += 1;
-              dRow = (by > realTargetY1) ? by - realTargetY1 : 0;
-            } else {
+            if (by <= eY) {
               for (int x = eX; x < eX + maxSize && x < board.getWidth(); x++) {
                 for (int y = eY; y >= 0; y--) {
                   if (board.getCell(x, y) == 1) {
-                    if (y < realTargetY2) realTargetY2 = y;
+                    if (y < realTargetY2)
+                      realTargetY2 = y;
                     break;
                   }
                 }
               }
               realTargetY2 -= bh;
               dRow = (by < realTargetY2) ? realTargetY2 - by : 0;
+            } else {
+              for (int x = eX; x < eX + maxSize && x < board.getWidth(); x++) {
+                for (int y = eY; y < board.getHeight(); y++) {
+                  if (board.getCell(x, y) == 1) {
+                    if (y > realTargetY1)
+                      realTargetY1 = y;
+                    break;
+                  }
+                }
+              }
+              realTargetY1 += 1;
+              dRow = (by > realTargetY1) ? by - realTargetY1 : 0;
             }
           } else {
             int validMinY = exits[e].getY();
@@ -396,11 +414,9 @@ void GameState::computeHeuristic() {
           }
 
           // La distancia total es la suma de desplazamientos necesarios.
-          // Se divide entre 3 para hacerla admisible (aprox) ya que en 1
-          // movimiento puede avanzar varias celdas, manteniendo un buen
-          // gradiente hacia la meta.
-          // Se suma 1 porque ahora la evacuación en sí requiere un paso extra.
-          int dist = (dCol + dRow) / 3 + 1;
+          // Se usa la suma directa (DCol + DRow) para dar un mayor peso a la
+          // heuristica y acelerar la busqueda
+          int dist = (dCol + dRow) + 1;
           if (dist < minDist)
             minDist = dist;
         }
@@ -422,17 +438,17 @@ bool GameState::canEvacuate(int blockIndex, char &outDir, int &outDist) const {
     return false;
   const Block &b = board.getBlock(blockIndex);
   char blockColor = b.getColor();
-  
+
   int bx = b.getX();
   int by = b.getY();
   int bw = b.getWidth();
   int bh = b.getHeight();
-  bool* geom = b.getGeometry();
-  
+  bool *geom = b.getGeometry();
+
   for (int e = 0; e < numExits; e++) {
     if (exits[e].getColor() != blockColor)
       continue;
-    
+
     int eCol = exits[e].getX();
     int eRow = exits[e].getY();
     char ori = exits[e].getOrientation();
@@ -441,11 +457,21 @@ bool GameState::canEvacuate(int blockIndex, char &outDir, int &outDist) const {
     int dx = 0, dy = 0;
     char oDir = ' ';
     if (ori == 'V') {
-      if (eCol < board.getWidth() / 2) { dx = -1; oDir = 'L'; }
-      else { dx = 1; oDir = 'R'; }
+      if (bx <= eCol) {
+        dx = 1;
+        oDir = 'R';
+      } else {
+        dx = -1;
+        oDir = 'L';
+      }
     } else {
-      if (eRow < board.getHeight() / 2) { dy = -1; oDir = 'U'; }
-      else { dy = 1; oDir = 'D'; }
+      if (by <= eRow) {
+        dy = 1;
+        oDir = 'D';
+      } else {
+        dy = -1;
+        oDir = 'U';
+      }
     }
 
     bool canStep = true;
@@ -456,25 +482,26 @@ bool GameState::canEvacuate(int blockIndex, char &outDir, int &outDist) const {
         if (geom == nullptr || geom[r * bw + c]) {
           int gX = bx + c + dx;
           int gY = by + r + dy;
-          
-          if (gX < 0 || gX >= board.getWidth() || gY < 0 || gY >= board.getHeight()) {
-             // Completamente fuera del tablero
-             canStep = false; 
+
+          if (gX < 0 || gX >= board.getWidth() || gY < 0 ||
+              gY >= board.getHeight()) {
+            // Completamente fuera del tablero
+            canStep = false;
           } else {
-             int cellVal = board.getCell(gX, gY);
-             if (cellVal == 1) { 
-                // Choca con pared, verificar si es exactamente el agujero
-                if (ori == 'V' && gY >= eRow && gY < eRow + cs) {
-                   touchesHole = true;
-                } else if (ori == 'H' && gX >= eCol && gX < eCol + cs) {
-                   touchesHole = true;
-                } else {
-                   canStep = false;
-                }
-             } else if (cellVal != 0 && cellVal != b.getID() + 10) {
-                // Choca con otro bloque
+            int cellVal = board.getCell(gX, gY);
+            if (cellVal == 1) {
+              // Choca con pared, verificar si es exactamente el agujero
+              if (ori == 'V' && gY >= eRow && gY < eRow + cs) {
+                touchesHole = true;
+              } else if (ori == 'H' && gX >= eCol && gX < eCol + cs) {
+                touchesHole = true;
+              } else {
                 canStep = false;
-             }
+              }
+            } else if (cellVal != 0 && cellVal != b.getID() + 10) {
+              // Choca con otro bloque
+              canStep = false;
+            }
           }
         }
       }
@@ -489,7 +516,8 @@ bool GameState::canEvacuate(int blockIndex, char &outDir, int &outDist) const {
   return false;
 }
 
-bool GameState::canJumpGate(int blockIndex, char &outDir, int &outDx, int &outDy) const {
+bool GameState::canJumpGate(int blockIndex, char &outDir, int &outDx,
+                            int &outDy) const {
   if (evacuated[blockIndex] || numGates == 0 || gates == nullptr)
     return false;
 
@@ -500,66 +528,75 @@ bool GameState::canJumpGate(int blockIndex, char &outDir, int &outDx, int &outDy
   int orig_by = b.getY();
   int orig_bw = b.getWidth();
   int orig_bh = b.getHeight();
-  bool* geom = b.getGeometry();
+  bool *geom = b.getGeometry();
   int minCol = orig_bw, maxCol = -1;
   int minRow = orig_bh, maxRow = -1;
   for (int r = 0; r < orig_bh; r++) {
-      for (int c = 0; c < orig_bw; c++) {
-          if (geom == nullptr || geom[r * orig_bw + c]) {
-              if (c < minCol) minCol = c;
-              if (c > maxCol) maxCol = c;
-              if (r < minRow) minRow = r;
-              if (r > maxRow) maxRow = r;
-          }
+    for (int c = 0; c < orig_bw; c++) {
+      if (geom == nullptr || geom[r * orig_bw + c]) {
+        if (c < minCol)
+          minCol = c;
+        if (c > maxCol)
+          maxCol = c;
+        if (r < minRow)
+          minRow = r;
+        if (r > maxRow)
+          maxRow = r;
       }
+    }
   }
   int bx, by, bw, bh;
   if (maxCol == -1) {
-      bx = orig_bx; by = orig_by; bw = orig_bw; bh = orig_bh;
+    bx = orig_bx;
+    by = orig_by;
+    bw = orig_bw;
+    bh = orig_bh;
   } else {
-      bx = orig_bx + minCol;
-      by = orig_by + minRow;
-      bw = maxCol - minCol + 1;
-      bh = maxRow - minRow + 1;
+    bx = orig_bx + minCol;
+    by = orig_by + minRow;
+    bw = maxCol - minCol + 1;
+    bh = maxRow - minRow + 1;
   }
 
   for (int gi = 0; gi < numGates; gi++) {
-      const Gate& gate = gates[gi];
-      if (blockColor != gate.getColorAtStep(g)) continue;
+    const Gate &gate = gates[gi];
+    if (blockColor != gate.getColorAtStep(g))
+      continue;
 
-      char ori = gate.getOrientation();
-      int gLen = gate.getLength();
-      int gx = gate.getX();
-      int gy = gate.getY();
+    char ori = gate.getOrientation();
+    int gLen = gate.getLength();
+    int gx = gate.getX();
+    int gy = gate.getY();
 
-      outDx = 0; outDy = 0;
-      outDir = ' ';
+    outDx = 0;
+    outDy = 0;
+    outDir = ' ';
 
-      if (ori == 'H') {
-          if (bw <= gLen && bx >= gx && bx + bw - 1 <= gx + gLen - 1) {
-              if (by + bh == gy) {
-                  outDy = bh + 1;
-                  outDir = 'D';
-              } else if (by == gy + 1) {
-                  outDy = -bh - 1;
-                  outDir = 'U';
-              }
-          }
-      } else if (ori == 'V') {
-          if (bh <= gLen && by >= gy && by + bh - 1 <= gy + gLen - 1) {
-              if (bx + bw == gx) {
-                  outDx = bw + 1;
-                  outDir = 'R';
-              } else if (bx == gx + 1) {
-                  outDx = -bw - 1;
-                  outDir = 'L';
-              }
-          }
+    if (ori == 'H') {
+      if (bw <= gLen && bx >= gx && bx + bw - 1 <= gx + gLen - 1) {
+        if (by + bh == gy) {
+          outDy = bh + 1;
+          outDir = 'D';
+        } else if (by == gy + 1) {
+          outDy = -bh - 1;
+          outDir = 'U';
+        }
       }
-
-      if (outDir != ' ') {
-          return true; // Se encontró una compuerta válida para saltar
+    } else if (ori == 'V') {
+      if (bh <= gLen && by >= gy && by + bh - 1 <= gy + gLen - 1) {
+        if (bx + bw == gx) {
+          outDx = bw + 1;
+          outDir = 'R';
+        } else if (bx == gx + 1) {
+          outDx = -bw - 1;
+          outDir = 'L';
+        }
       }
+    }
+
+    if (outDir != ' ') {
+      return true; // Se encontró una compuerta válida para saltar
+    }
   }
 
   return false;
@@ -572,17 +609,21 @@ bool GameState::canJumpGate(int blockIndex, char &outDir, int &outDx, int &outDy
 void GameState::printBoard() const {
   int w = board.getWidth();
   int h = board.getHeight();
-  
+
   // Encontrar limites reales de los muros
   std::vector<int> firstWallRow(h, w), lastWallRow(h, -1);
   std::vector<int> firstWallCol(w, h), lastWallCol(w, -1);
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       if (board.getCell(x, y) == 1) {
-        if (x < firstWallRow[y]) firstWallRow[y] = x;
-        if (x > lastWallRow[y]) lastWallRow[y] = x;
-        if (y < firstWallCol[x]) firstWallCol[x] = y;
-        if (y > lastWallCol[x]) lastWallCol[x] = y;
+        if (x < firstWallRow[y])
+          firstWallRow[y] = x;
+        if (x > lastWallRow[y])
+          lastWallRow[y] = x;
+        if (y < firstWallCol[x])
+          firstWallCol[x] = y;
+        if (y > lastWallCol[x])
+          lastWallCol[x] = y;
       }
     }
   }
@@ -596,21 +637,15 @@ void GameState::printBoard() const {
         char ori = exits[e].getOrientation();
         int cs = exits[e].getSizeAtStep(g);
 
-        if (ori == 'V') { // Salida en pared lateral
-          if (y >= ey && y < ey + cs) {
-             if (ex < w / 2 && x == firstWallRow[y]) {
-                exitColor = exits[e].getColor(); break;
-             } else if (ex >= w / 2 && x == lastWallRow[y]) {
-                exitColor = exits[e].getColor(); break;
-             }
+        if (ori == 'V') {
+          if (y >= ey && y < ey + cs && x == ex) {
+            exitColor = exits[e].getColor();
+            break;
           }
-        } else if (ori == 'H') { // Salida en pared superior/inferior
-          if (x >= ex && x < ex + cs) {
-             if (ey < h / 2 && y == firstWallCol[x]) {
-                exitColor = exits[e].getColor(); break;
-             } else if (ey >= h / 2 && y == lastWallCol[x]) {
-                exitColor = exits[e].getColor(); break;
-             }
+        } else if (ori == 'H') {
+          if (x >= ex && x < ex + cs && y == ey) {
+            exitColor = exits[e].getColor();
+            break;
           }
         }
       }
@@ -622,12 +657,12 @@ void GameState::printBoard() const {
         char gori = gates[gi].getOrientation();
         int glen = gates[gi].getLength();
 
-        if (gori == 'H') { 
+        if (gori == 'H') {
           if (y == gy && x >= gx && x < gx + glen) {
             gateColor = gates[gi].getColorAtStep(g);
             break;
           }
-        } else if (gori == 'V') { 
+        } else if (gori == 'V') {
           if (x == gx && y >= gy && y < gy + glen) {
             gateColor = gates[gi].getColorAtStep(g);
             break;

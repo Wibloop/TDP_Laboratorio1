@@ -42,7 +42,7 @@ class Board {
         int blockCapacity; // Capacidad maxima del arreglo de bloques
 
         // Necesitamos validar cada movimiento del Block antes de efectuar el mismo
-        bool isValidMove(int blockIndex, int dx, int dy) const;
+
 
     public:
         // Necesitamos definir de forma publica CUALES seran los metodos(funciones) del Board
@@ -82,6 +82,8 @@ class Board {
         void addWall(int x, int y);
         // moveBlock: Intenta mover el bloque dado desplazamiento (dx, dy)
         bool moveBlock(int blockIndex, int dx, int dy);
+        // isValidMove: Valida si el bloque puede moverse a la nueva posicion
+        bool isValidMove(int blockIndex, int dx, int dy) const;
         // removeBlock: Remueve un bloque del grid (no del arreglo, solo marca posicion como removido)
         void removeBlock(int blockIndex);
         // rebuildGrid: Reconstruye el grid desde cero usando la posicion actual de los bloques

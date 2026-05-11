@@ -1,0 +1,47 @@
+[META]
+NAME = dificil2
+WIDTH = 20
+HEIGHT = 20
+STEP_LIMIT = 500
+
+[BLOCK]
+1 COLOR=a WIDTH=3 HEIGHT=3 INIT_X=2 INIT_Y=1 GEOMETRY=1 1 1 1 0 1 1 1 1
+2 COLOR=b WIDTH=3 HEIGHT=3 INIT_X=15 INIT_Y=16 GEOMETRY=0 1 0 1 1 1 0 1 0
+3 COLOR=c WIDTH=3 HEIGHT=3 INIT_X=2 INIT_Y=16 GEOMETRY=1 1 1 1 1 1 1 1 1
+4 COLOR=d WIDTH=3 HEIGHT=3 INIT_X=15 INIT_Y=1 GEOMETRY=1 0 1 1 1 1 1 0 1
+5 COLOR=e WIDTH=2 HEIGHT=2 INIT_X=9 INIT_Y=9 GEOMETRY=1 1 1 1
+
+[WALL]
+####################
+#                  #
+#                  #
+#                  #
+#                  #
+####   ######   ####
+#                  #
+#                  #
+#                  #
+##                ##
+##                ##
+#                  #
+#                  #
+#                  #
+####   ######   ####
+#                  #
+#                  #
+#                  #
+#                  #
+####################
+
+[EXIT]
+COLOR=a X=19 Y=8 ORIENTATION=H LI=4 LF=4 STEP=0
+COLOR=b X=0 Y=8 ORIENTATION=H LI=4 LF=4 STEP=0
+COLOR=c X=8 Y=0 ORIENTATION=V LI=4 LF=4 STEP=0
+COLOR=d X=8 Y=19 ORIENTATION=V LI=4 LF=4 STEP=0
+COLOR=e X=0 Y=16 ORIENTATION=H LI=2 LF=2 STEP=0
+
+[GATE]
+X=5 Y=4 ORIENTATION=H LI=3 CI=a CF=d STEP=1
+X=5 Y=13 ORIENTATION=H LI=3 CI=b CF=e STEP=1
+X=14 Y=4 ORIENTATION=H LI=3 CI=a CF=e STEP=1
+X=14 Y=13 ORIENTATION=H LI=3 CI=a CF=e STEP=1
