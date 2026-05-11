@@ -2,10 +2,7 @@
 
 // Implementacion de la clase Gate
 
-// Metodo: Constructor por defecto -> Gate
-// Descripcion: Crea una compuerta sin inicializar. Necesario para arreglos dinamicos.
-// Parametros: Ninguno
-// Retorna: void
+// constructor vacio para poder meter gates en arrays dinamicos sin que crashee
 Gate::Gate() {
     x = 0;
     y = 0;
@@ -16,17 +13,8 @@ Gate::Gate() {
     step = 0;
 }
 
-// Metodo: Constructor parametrizado -> Gate
-// Descripcion: Inicializa una compuerta con todos sus atributos.
-// Parametros:
-//      - int x: Posicion X de la compuerta
-//      - int y: Posicion Y de la compuerta
-//      - char orientation: 'H' horizontal o 'V' vertical
-//      - int length: Largo de la compuerta (LI)
-//      - char colorInitial: Color inicial (CI)
-//      - char colorFinal: Color final (CF)
-//      - int step: Cada cuantos pasos cambia el color (0 = estatico)
-// Retorna: void
+// constructor de verdad que le pone todos los datos de una
+// recibe donde esta para donde mira cuanto mide sus colores y cada cuanto cambia
 Gate::Gate(int x, int y, char orientation, int length,
            char colorInitial, char colorFinal, int step) {
     this->x = x;
@@ -38,11 +26,7 @@ Gate::Gate(int x, int y, char orientation, int length,
     this->step = step;
 }
 
-// Metodo: Constructor de copia -> Gate
-// Descripcion: Copia todos los atributos. No hay memoria dinamica.
-// Parametros:
-//      - const Gate& other: La compuerta a copiar
-// Retorna: void
+// copia normalita de los datos no pide memoria asi que fresh
 Gate::Gate(const Gate& other) {
     x = other.x;
     y = other.y;
@@ -53,12 +37,7 @@ Gate::Gate(const Gate& other) {
     step = other.step;
 }
 
-// Metodo: Operador de asignacion -> operator=
-// Descripcion: Asigna los valores de otra compuerta a esta.
-// Parametros:
-//      - const Gate& other: La compuerta fuente
-// Retorna:
-//      - Gate&: Referencia a este objeto
+// asignamos un gate a otro copiando valor por valor
 Gate& Gate::operator=(const Gate& other) {
     if (this == &other) {
         return *this;
@@ -73,78 +52,49 @@ Gate& Gate::operator=(const Gate& other) {
     return *this;
 }
 
-// Metodo: Destructor -> ~Gate
-// Descripcion: No libera memoria porque Gate no tiene atributos dinamicos.
-// Parametros: Ninguno
-// Retorna: void
+// destructor vacio pq no usamos news aca adentro
 Gate::~Gate() {
-    // No hay memoria dinamica que liberar
+    // todo chill sin leaks
 }
 
-// Metodo: getX
-// Descripcion: Retorna la posicion X de la compuerta
-// Parametros: Ninguno
-// Retorna: int x
+// devuelve donde esta en x
 int Gate::getX() const {
     return x;
 }
 
-// Metodo: getY
-// Descripcion: Retorna la posicion Y de la compuerta
-// Parametros: Ninguno
-// Retorna: int y
+// devuelve donde esta en y
 int Gate::getY() const {
     return y;
 }
 
-// Metodo: getOrientation
-// Descripcion: Retorna la orientacion de la compuerta
-// Parametros: Ninguno
-// Retorna: char orientation ('H' o 'V')
+// nos dice si es h o v
 char Gate::getOrientation() const {
     return orientation;
 }
 
-// Metodo: getLength
-// Descripcion: Retorna el largo de la compuerta
-// Parametros: Ninguno
-// Retorna: int length
+// pasa el largo del gate
 int Gate::getLength() const {
     return length;
 }
 
-// Metodo: getColorInitial
-// Descripcion: Retorna el color inicial de la compuerta
-// Parametros: Ninguno
-// Retorna: char colorInitial
+// cual es el primer color
 char Gate::getColorInitial() const {
     return colorInitial;
 }
 
-// Metodo: getColorFinal
-// Descripcion: Retorna el color final de la compuerta
-// Parametros: Ninguno
-// Retorna: char colorFinal
+// cual es el ultimo color
 char Gate::getColorFinal() const {
     return colorFinal;
 }
 
-// Metodo: getStep
-// Descripcion: Retorna cada cuantos pasos cambia el color
-// Parametros: Ninguno
-// Retorna: int step
+// cada cuantos turnos cambia el colorcito
 int Gate::getStep() const {
     return step;
 }
 
-// Metodo: getColorAtStep
-// Descripcion: Calcula el color actual de la compuerta en el paso dado.
-//   Si step == 0, retorna colorInitial (estatico).
-//   El color cicla: CI, CI+1, CI+2, ..., CF, CI, CI+1, ...
-//   El cambio ocurre cada 'step' pasos de tiempo.
-// Parametros:
-//      - int currentStep: El paso de tiempo actual (g del estado)
-// Retorna: char color actual de la compuerta
+// saca cuentas para saber de que color esta el gate en un turno exacto
+// si el step es 0 siempre es el mismo color sino va ciclando
+// le mandamos el step actual del juego o sea la g del estado y hace magia con el modulo
 char Gate::getColorAtStep(int currentStep) const {
     if (step == 0 || colorInitial == colorFinal) {
         return colorInitial;

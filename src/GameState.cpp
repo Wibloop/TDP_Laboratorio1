@@ -4,9 +4,8 @@
 
 // Implementacion de GameState. Nodo del arbol de busqueda A*
 
-// Inicializa un nuevo estado del juego almacenando una copia profunda de todos
-// sus parametros Se clonan salidas compuertas y el tablero para independizar la
-// simulacion de este estado
+// aca inicializamos un estado nuevo copiando todo lo del anterior 
+// clonamos salidas compuertas y el tablero para que no se pisen entre simulaciones
 GameState::GameState(const Board &board, Exit *exits, int numExits, Gate *gates,
                      int numGates)
     : board(board) {
@@ -31,8 +30,7 @@ GameState::GameState(const Board &board, Exit *exits, int numExits, Gate *gates,
   }
 }
 
-// Constructor de copia que realiza un deep copy completo del estado y todas sus
-// matrices dinamicas
+// constructor de copia puro deep copy de todo el estado y la memoria dinamica
 GameState::GameState(const GameState &other) : board(other.board) {
   numExits = other.numExits;
   numGates = other.numGates;
@@ -53,7 +51,7 @@ GameState::GameState(const GameState &other) : board(other.board) {
     evacuated[i] = other.evacuated[i];
 }
 
-// Sobrecarga del operador de asignacion para copias profundas sin memory leaks
+// sobrecarga para asignar estados sin que nos quede basura en la memoria
 GameState &GameState::operator=(const GameState &other) {
   if (this == &other)
     return *this;
@@ -81,7 +79,7 @@ GameState &GameState::operator=(const GameState &other) {
   return *this;
 }
 
-// Libera memoria asignada dinamicamente para este estado
+// borramos la memoria dinamica que pedimos para este nodo
 GameState::~GameState() {
   delete[] exits;
   delete[] gates;
@@ -112,8 +110,8 @@ void GameState::setG(int g) { this->g = g; }
 void GameState::setH(int h) { this->h = h; }
 void GameState::setParent(GameState *parent) { this->parent = parent; }
 
-// Copia la cadena de texto descriptiva del ultimo movimiento al buffer del
-// estado Limitado por seguridad a 15 caracteres
+// copiamos el string del movimiento que hicimos onda DA,3 al buffer
+// le clavamos limite de 15 chars por las dudas
 void GameState::setMoveDesc(const char *desc) {
   int i = 0;
   while (desc[i] != '\0' && i < 15) {
@@ -128,13 +126,10 @@ void GameState::setEvacuated(int index, bool value) {
     evacuated[index] = value;
 }
 
-// Retorna true si todos los bloques que tienen al menos una salida compatible
-// ya fueron evacuados Los bloques sin salida compatible o que fisicamente no
-// caben actuan como obstaculos permanentes Para que un bloque quepa debe
-// cumplir la condicion geometrica del agujero H indica un hoyo horizontal por
-// lo que el bloque se mueve verticalmente y su ancho debe caber V indica un
-// hoyo vertical por lo que el bloque se mueve horizontalmente y su altura debe
-// caber
+// aca miramos si todos los bloques que de verdad podian salir ya lo hicieron
+// si hay algun bloque que por geometria o color nunca iba a poder salir lo tomamos como obstaculo y fue
+// para saber si cabe vemos si es H el hoyo entonces se mueve vertical y vemos el ancho
+// si es V se mueve horizontal y revisamos su alto
 bool GameState::isSolved() const {
   int n = board.getNumBlocks();
   for (int i = 0; i < n; i++) {
@@ -168,7 +163,7 @@ bool GameState::isSolved() const {
   return true;
 }
 
-// Helpers temporales
+// helpers que usamos por aca nomas
 static int gcd_temporal(int a, int b) {
   while (b != 0) {
     int t = b;
@@ -209,11 +204,8 @@ static int getLevelPeriod(Exit *exits, int numExits, Gate *gates,
   return currentLcm;
 }
 
-// Metodo: computeHash
-// Descripcion: Hash FNV-1a basado en posiciones de bloques y estado de
-// evacuacion.
-//   FNV-1a: hash = (hash XOR byte) * prime. Buena distribucion para tablas
-//   hash.
+// armamos un hash loco fnv1a usando donde estan los bloques y si salieron o no
+// la idea es que tire pocos choques para que la hashtable funcione de 10
 unsigned long GameState::computeHash() const {
   unsigned long hash = 2166136261UL;
   unsigned long prime = 16777619UL;
@@ -233,9 +225,7 @@ unsigned long GameState::computeHash() const {
   return hash;
 }
 
-// Metodo: equals
-// Descripcion: Dos estados son iguales si misma posicion de bloques y
-// evacuacion
+// checkea si dos estados son igualitos onda mismos bloques en mismos lugares y evacuados
 bool GameState::equals(const GameState &other) const {
   int period = getLevelPeriod(exits, numExits, gates, numGates);
   if ((this->g % period) != (other.g % period))
@@ -256,20 +246,8 @@ bool GameState::equals(const GameState &other) const {
   return true;
 }
 
-// Metodo: computeHeuristic
-// Descripcion: Heuristica admisible = suma de distancias Manhattan de cada
-// bloque
-//   no evacuado a su salida mas cercana del mismo color.
-//
-//   Sistema de coordenadas (igual para EXIT y BLOCK):
-//     X = Columna (eje horizontal), Y = Fila (eje vertical). (0,0) = esquina
-//     sup-izq.
-//
-//   ORIENTATION describe la DIRECCION DE MOVIMIENTO del bloque para salir:
-//     - H (mov. horizontal): Salida en paredes laterales (X=0 o X=W-1).
-//       Agujero vertical [Y, Y+LI-1]. Bloque necesita HEIGHT <= LI.
-//     - V (mov. vertical): Salida en paredes sup/inf (Y=0 o Y=H-1).
-//       Agujero horizontal [X, X+LI-1]. Bloque necesita WIDTH <= LI.
+// aca sacamos la heuristica que es la suma de las distancias de los bloques a su salida mas cercana
+// usamos orientacion para saber si nos movemos por filas o columnas dependiendo de como esta el hoyo
 void GameState::computeHeuristic() {
   int totalH = 0;
   int n = board.getNumBlocks();
@@ -413,9 +391,8 @@ void GameState::computeHeuristic() {
               dRow = by - validMaxY;
           }
 
-          // La distancia total es la suma de desplazamientos necesarios.
-          // Se usa la suma directa (DCol + DRow) para dar un mayor peso a la
-          // heuristica y acelerar la busqueda
+          // calculamos la distancia final juntando lo que nos movimos en x y en y
+          // le sumamos uno extra para que la heuristica pese un pelin mas y el a* vuele mas rapido
           int dist = (dCol + dRow) + 1;
           if (dist < minDist)
             minDist = dist;
@@ -424,7 +401,7 @@ void GameState::computeHeuristic() {
     }
 
     if (!hasValidExit) {
-      // Bloque sin salida compatible: es un obstaculo, no penalizar
+      // si este bloque no tiene por donde salir lo dejamos como obstaculo y no nos penaliza
       continue;
     } else {
       totalH += minDist;
@@ -602,15 +579,13 @@ bool GameState::canJumpGate(int blockIndex, char &outDir, int &outDx,
   return false;
 }
 
-// Metodo: printBoard
-// Descripcion: Imprime el tablero de la misma forma que Board::printBoard,
-// pero superpone las letras de las salidas (en minuscula) sobre los muros.
-// Ademas, no imprime '.' fuera de los limites de los muros de cada fila.
+// dibuja el mapita igual que el del board pero le manda las salidas encimadas a la pared
+// y de paso quita los puntitos vacios de afuera para que no se vea sucio
 void GameState::printBoard() const {
   int w = board.getWidth();
   int h = board.getHeight();
 
-  // Encontrar limites reales de los muros
+  // primero pillamos donde empiezan y terminan las paredes reales
   std::vector<int> firstWallRow(h, w), lastWallRow(h, -1);
   std::vector<int> firstWallCol(w, h), lastWallCol(w, -1);
   for (int y = 0; y < h; y++) {
