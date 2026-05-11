@@ -3,8 +3,7 @@
 
 // Implementacion del AStarSolver — Motor del algoritmo A*
 
-// Metodo: Constructor
-// Descripcion: Inicializa el solver con capacidades por defecto
+// Constructor que reserva la memoria para el arbol de busqueda y los hashsets
 AStarSolver::AStarSolver() : openSet(256), closedSet(4096) {
   stateCapacity = 10000;
   stateCount = 0;
@@ -13,10 +12,8 @@ AStarSolver::AStarSolver() : openSet(256), closedSet(4096) {
   solutionState = nullptr;
 }
 
-// Metodo: Destructor
-// Descripcion: Libera TODA la memoria de los estados creados durante la
-// busqueda.
-//   Esto es importante porque los estados se crean con new y deben liberarse.
+// Destruye todos los estados creados durante la busqueda en el arbol
+// Esto previene fugas de memoria gigantescas por los news del generateSuccessors
 AStarSolver::~AStarSolver() {
   for (int i = 0; i < stateCount; i++) {
     delete allStates[i];
@@ -24,10 +21,8 @@ AStarSolver::~AStarSolver() {
   delete[] allStates;
 }
 
-// Metodo: trackState
-// Descripcion: Registra un puntero a GameState en el arreglo allStates para
-//   poder liberarlo al destruir el solver. Si el arreglo esta lleno, lo
-//   duplica.
+// Registra un puntero a GameState en el arreglo global para liberarlo luego
+// Si superamos la capacidad del array se duplica mediante realojamiento dinamico
 void AStarSolver::trackState(GameState *state) {
   if (stateCount >= stateCapacity) {
     stateCapacity *= 2;
@@ -41,24 +36,12 @@ void AStarSolver::trackState(GameState *state) {
   allStates[stateCount++] = state;
 }
 
-// Metodo: generateSuccessors
-// Descripcion: Genera todos los estados hijos posibles del estado actual.
-//
-//   Para cada bloque NO evacuado:
-//     Para cada direccion (U, D, L, R):
-//       Intenta mover 1 celda, luego 2, luego 3... hasta que el movimiento
-//       sea invalido (colision con pared u otro bloque).
-//
-//   Cada movimiento valido genera un nuevo GameState:
-//   1. Se crea una copia profunda del estado actual
-//   2. Se aplica el movimiento en la copia
-//   3. Se verifica evacuacion (checkAndEvacuate)
-//   4. Se calcula la heuristica
-//   5. Si no esta en el ClosedSet, se agrega al OpenSet
-//
-//   El formato de movimiento es: "DA,3" (Direccion + ID_bloque->Color + , +
-//   celdas) donde D=direccion, A=ID del bloque transformado a color, 3=cantidad
-//   de celdas movidas.
+// Genera todos los estados hijos a partir del actual evaluando todas las ramificaciones
+// Se verifica cada bloque no evacuado y se intenta mover en todas las direcciones posibles
+// Si el movimiento es valido se crea un nuevo estado se clona el tablero y se aplica
+// Despues se comprueba si el bloque ha llegado a una posicion de evacuacion
+// Finalmente se calcula la heuristica del nuevo tablero para insertarlo al OpenSet
+// Guardamos la accion en un string de formato DA,3 donde D es direccion A es bloque y 3 es distancia
 void AStarSolver::generateSuccessors(GameState *current) {
   const Board &curBoard = current->getBoard();
   int numBlocks = curBoard.getNumBlocks();
@@ -74,15 +57,14 @@ void AStarSolver::generateSuccessors(GameState *current) {
     if (current->isBlockEvacuated(bi))
       continue;
 
-    // Intentar evacuar explícitamente
+    // Intenta realizar una evacuacion directa si el bloque esta alineado con su agujero
     char evacDir;
     int evacDist;
     if (current->canEvacuate(bi, evacDir, evacDist)) {
       GameState *child = new GameState(*current);
       child->setEvacuated(bi, true);
       child->getBoard().removeBlock(bi);
-      // Se calcula el costo + 1 para dar el movimineto final de entrar a la
-      // puerta
+      // Se suma 1 al coste G para representar el paso extra fisico de salida
       child->setG(current->getG() + 1);
       child->setParent(current);
 
@@ -106,7 +88,44 @@ void AStarSolver::generateSuccessors(GameState *current) {
         trackState(child);
         openSet.push(child);
       }
-      continue; // Si el bloque puede evacuar, la mejor accion es hacerlo
+    }
+
+    // LOGICA DE COMPUERTAS
+    char jumpDir;
+    int jumpDx, jumpDy;
+    if (current->canJumpGate(bi, jumpDir, jumpDx, jumpDy)) {
+        GameState *child = new GameState(*current);
+        bool moved = child->getBoard().moveBlock(bi, jumpDx, jumpDy);
+        if (moved) {
+            child->setG(current->getG() + 1);
+            child->setParent(current);
+
+            char desc[16];
+            desc[0] = jumpDir;
+            char blockChar = current->getBoard().getBlock(bi).getColor();
+            if (blockChar >= 'a' && blockChar <= 'z') blockChar -= 32;
+            int pos = 1;
+            desc[pos++] = blockChar;
+            desc[pos++] = ',';
+            int dist = (jumpDx != 0) ? jumpDx : jumpDy;
+            if (dist < 0) dist = -dist;
+            
+            if (dist >= 10) desc[pos++] = '0' + (dist / 10);
+            desc[pos++] = '0' + (dist % 10);
+            desc[pos] = '\0';
+
+            child->setMoveDesc(desc);
+            child->computeHeuristic();
+
+            if (!closedSet.contains(child)) {
+                trackState(child);
+                openSet.push(child);
+            } else {
+                delete child;
+            }
+        } else {
+            delete child;
+        }
     }
 
     // Intentar las 4 direcciones
@@ -168,21 +187,12 @@ void AStarSolver::generateSuccessors(GameState *current) {
   }
 }
 
-// Metodo: solve
-// Descripcion: Ejecuta el algoritmo A* completo.
-//
-//   Pseudocodigo A*:
-//   1. Insertar estado_inicial en OpenSet
-//   2. Mientras OpenSet no este vacio:
-//      a. Extraer el estado con menor f del OpenSet
-//      b. Si es estado meta -> EXITO, retornar true
-//      c. Insertar en ClosedSet
-//      d. Generar todos los sucesores
-//   3. Si OpenSet se vacia -> NO HAY SOLUCION
-//
-// Parametros:
-//      - GameState* initialState: Estado inicial del juego
-// Retorna: bool true si se encontro solucion
+// Ejecuta el algoritmo AStar de forma completa
+// Inserta el estado inicial en el OpenSet e itera hasta que se vacie o se encuentre solucion
+// Extrae siempre el estado con menor costo f
+// Si el estado evaluado cumple isSolved se detiene la busqueda
+// De lo contrario lo marca como visitado en el ClosedSet y expande sus sucesores
+// Retorna un booleano indicando el exito de la operacion
 bool AStarSolver::solve(GameState *initialState) {
   // Calcular heuristica del estado inicial
   initialState->computeHeuristic();
@@ -199,14 +209,10 @@ bool AStarSolver::solve(GameState *initialState) {
   trackState(initialState);
 
   int iterations = 0;
-  // Limite de seguridad para evitar un consumo excesivo de CPU y prevenir que
-  // el computador se congele. Debido a la naturaleza del algoritmo A* y al
-  // tamaño del espacio de estados, existe el riesgo de una explosion
-  // combinatoria donde se pruebe un numero absurdo de combinaciones sin llegar
-  // a una solucion. Limitar la ejecucion a un maximo de 100000 iteraciones
-  // garantiza que el programa termine en un tiempo razonable, siendo esta
-  // cantidad suficiente para resolver cualquier mapa valido del juego.
-  int maxIterations = 1000000;
+  // Limite de iteraciones para proteger el uso de CPU y evitar que el proceso se congele
+  // Debido al inmenso arbol de estados posibles el solver podria perderse por minutos o horas
+  // Por precaucion se corta la busqueda tras trescientas mil iteraciones
+  int maxIterations = 300000;
 
   while (!openSet.isEmpty() && iterations < maxIterations) {
     iterations++;

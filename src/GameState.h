@@ -93,6 +93,10 @@ public:
   //              Si lo esta, retorna true y asigna la direccion y distancia en outDir y outDist.
   bool canEvacuate(int blockIndex, char& outDir, int& outDist) const;
 
+  // canJumpGate: Verifica si un bloque puede atravesar una compuerta adyacente.
+  //              Si lo esta y cumple los requisitos, retorna true y asigna la direccion y desplazamientos en outDir, outDx y outDy.
+  bool canJumpGate(int blockIndex, char& outDir, int& outDx, int& outDy) const;
+
   // printBoard: Imprime el tablero superponiendo las letras de las salidas
   void printBoard() const;
 };

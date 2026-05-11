@@ -1,17 +1,11 @@
 #include "GameState.h"
 #include <iostream>
+#include <vector>
 
 // Implementacion de GameState. Nodo del arbol de busqueda A*
 
-// Metodo: Constructor -> GameState
-// Descripcion: Crea un estado de juego. Inicializa g=0, h=0, padre=nullptr.
-// Parametros:
-//      - const Board& board: Estado del tablero
-//      - Exit* exits: Arreglo de salidas (se copia)
-//      - int numExits: Cantidad de salidas
-//      - Gate* gates: Arreglo de compuertas (se copia)
-//      - int numGates: Cantidad de compuertas
-// Retorna: void
+// Inicializa un nuevo estado del juego almacenando una copia profunda de todos sus parametros
+// Se clonan salidas compuertas y el tablero para independizar la simulacion de este estado
 GameState::GameState(const Board &board, Exit *exits, int numExits, Gate *gates,
                      int numGates)
     : board(board) {
@@ -36,8 +30,7 @@ GameState::GameState(const Board &board, Exit *exits, int numExits, Gate *gates,
   }
 }
 
-// Metodo: Constructor de copia
-// Descripcion: Deep copy completo del estado
+// Constructor de copia que realiza un deep copy completo del estado y todas sus matrices dinamicas
 GameState::GameState(const GameState &other) : board(other.board) {
   numExits = other.numExits;
   numGates = other.numGates;
@@ -58,7 +51,7 @@ GameState::GameState(const GameState &other) : board(other.board) {
     evacuated[i] = other.evacuated[i];
 }
 
-// Metodo: Operador de asignacion
+// Sobrecarga del operador de asignacion para copias profundas sin memory leaks
 GameState &GameState::operator=(const GameState &other) {
   if (this == &other)
     return *this;
@@ -86,7 +79,7 @@ GameState &GameState::operator=(const GameState &other) {
   return *this;
 }
 
-// Metodo: Destructor
+// Libera memoria asignada dinamicamente para este estado
 GameState::~GameState() {
   delete[] exits;
   delete[] gates;
@@ -117,8 +110,8 @@ void GameState::setG(int g) { this->g = g; }
 void GameState::setH(int h) { this->h = h; }
 void GameState::setParent(GameState *parent) { this->parent = parent; }
 
-// Metodo: setMoveDesc
-// Descripcion: Copia cadena de movimiento al buffer interno (max 15 chars)
+// Copia la cadena de texto descriptiva del ultimo movimiento al buffer del estado
+// Limitado por seguridad a 15 caracteres
 void GameState::setMoveDesc(const char *desc) {
   int i = 0;
   while (desc[i] != '\0' && i < 15) {
@@ -133,10 +126,11 @@ void GameState::setEvacuated(int index, bool value) {
     evacuated[index] = value;
 }
 
-// Metodo: isSolved
-// Descripcion: Retorna true si todos los bloques que TIENEN al menos una
-//   salida compatible (color + dimension) fueron evacuados.
-//   Bloques sin salida compatible actuan como obstaculos y se ignoran.
+// Retorna true si todos los bloques que tienen al menos una salida compatible ya fueron evacuados
+// Los bloques sin salida compatible o que fisicamente no caben actuan como obstaculos permanentes
+// Para que un bloque quepa debe cumplir la condicion geometrica del agujero
+// H indica un hoyo horizontal por lo que el bloque se mueve verticalmente y su ancho debe caber
+// V indica un hoyo vertical por lo que el bloque se mueve horizontalmente y su altura debe caber
 bool GameState::isSolved() const {
   int n = board.getNumBlocks();
   for (int i = 0; i < n; i++) {
@@ -154,11 +148,11 @@ bool GameState::isSolved() const {
         int li = exits[e].getLineStart();
         int lf = exits[e].getLineEnd();
         int maxSize = (li > lf) ? li : lf;
-        if (ori == 'H' && bh <= maxSize) {
+        if (ori == 'H' && bw <= maxSize) {
           hasCompatibleExit = true;
           break;
         }
-        if (ori == 'V' && bw <= maxSize) {
+        if (ori == 'V' && bh <= maxSize) {
           hasCompatibleExit = true;
           break;
         }
@@ -170,6 +164,44 @@ bool GameState::isSolved() const {
   return true;
 }
 
+// Helpers temporales
+static int gcd_temporal(int a, int b) {
+    while (b != 0) {
+        int t = b;
+        b = a % b;
+        a = t;
+    }
+    return a;
+}
+
+static int getLevelPeriod(Exit* exits, int numExits, Gate* gates, int numGates) {
+    int currentLcm = 1;
+    for (int e = 0; e < numExits; e++) {
+        int step = exits[e].getStep();
+        if (step > 0) {
+            int range = exits[e].getLineEnd() - exits[e].getLineStart();
+            if (range < 0) range = -range;
+            if (range > 0) {
+                int period = step * 2 * range;
+                currentLcm = (currentLcm / gcd_temporal(currentLcm, period)) * period;
+            }
+        }
+    }
+    for (int i = 0; i < numGates; i++) {
+        int step = gates[i].getStep();
+        if (step > 0) {
+            int range = gates[i].getColorFinal() - gates[i].getColorInitial();
+            if (range < 0) range = -range;
+            range += 1;
+            if (range > 0) {
+                int period = step * range;
+                currentLcm = (currentLcm / gcd_temporal(currentLcm, period)) * period;
+            }
+        }
+    }
+    return currentLcm;
+}
+
 // Metodo: computeHash
 // Descripcion: Hash FNV-1a basado en posiciones de bloques y estado de
 // evacuacion.
@@ -178,12 +210,15 @@ bool GameState::isSolved() const {
 unsigned long GameState::computeHash() const {
   unsigned long hash = 2166136261UL;
   unsigned long prime = 16777619UL;
+  int period = getLevelPeriod(exits, numExits, gates, numGates);
+  unsigned long tByte = (unsigned long)(g % period);
+  hash = (hash ^ tByte) * prime;
   int n = board.getNumBlocks();
   for (int i = 0; i < n; i++) {
     const Block &b = board.getBlock(i);
-    unsigned char xByte = (unsigned char)(b.getX() + 50);
+    unsigned char xByte = evacuated[i] ? 0 : (unsigned char)(b.getX() + 50);
     hash = (hash ^ xByte) * prime;
-    unsigned char yByte = (unsigned char)(b.getY() + 50);
+    unsigned char yByte = evacuated[i] ? 0 : (unsigned char)(b.getY() + 50);
     hash = (hash ^ yByte) * prime;
     unsigned char evByte = evacuated[i] ? 1 : 0;
     hash = (hash ^ evByte) * prime;
@@ -195,6 +230,9 @@ unsigned long GameState::computeHash() const {
 // Descripcion: Dos estados son iguales si misma posicion de bloques y
 // evacuacion
 bool GameState::equals(const GameState &other) const {
+  int period = getLevelPeriod(exits, numExits, gates, numGates);
+  if ((this->g % period) != (other.g % period))
+    return false;
   int n = board.getNumBlocks();
   if (n != other.board.getNumBlocks())
     return false;
@@ -233,10 +271,32 @@ void GameState::computeHeuristic() {
       continue;
     const Block &b = board.getBlock(i);
     char blockColor = b.getColor();
-    int bw = b.getWidth();
-    int bh = b.getHeight();
-    int bx = b.getX(); // columna
-    int by = b.getY(); // fila
+    
+    int bx, by, bw, bh;
+    int orig_bw = b.getWidth();
+    int orig_bh = b.getHeight();
+    bool* geom = b.getGeometry();
+    int minCol = orig_bw, maxCol = -1;
+    int minRow = orig_bh, maxRow = -1;
+    for (int r = 0; r < orig_bh; r++) {
+        for (int c = 0; c < orig_bw; c++) {
+            if (geom == nullptr || geom[r * orig_bw + c]) {
+                if (c < minCol) minCol = c;
+                if (c > maxCol) maxCol = c;
+                if (r < minRow) minRow = r;
+                if (r > maxRow) maxRow = r;
+            }
+        }
+    }
+    if (maxCol == -1) {
+        bx = b.getX(); by = b.getY(); bw = orig_bw; bh = orig_bh;
+    } else {
+        bx = b.getX() + minCol;
+        by = b.getY() + minRow;
+        bw = maxCol - minCol + 1;
+        bh = maxRow - minRow + 1;
+    }
+    
     int minDist = 99999;
     bool hasValidExit = false;
 
@@ -247,30 +307,47 @@ void GameState::computeHeuristic() {
         int lf = exits[e].getLineEnd();
         int maxSize = (li > lf) ? li : lf;
 
-        // H -> mov. horizontal, bloque necesita HEIGHT <= tamaño
-        // V -> mov. vertical, bloque necesita WIDTH <= tamaño
+        // H -> mov. vertical, bloque necesita WIDTH <= tamaño
+        // V -> mov. horizontal, bloque necesita HEIGHT <= tamaño
         bool fits = false;
-        if (ori == 'H' && bh <= maxSize)
+        if (ori == 'H' && bw <= maxSize)
           fits = true;
-        if (ori == 'V' && bw <= maxSize)
+        if (ori == 'V' && bh <= maxSize)
           fits = true;
 
         if (fits) {
           hasValidExit = true;
           // Distancia en X (columnas)
           int dCol = 0;
-          if (ori == 'H') {
-            // Salida en pared lateral. El bloque debe llegar a bx == 1 o bx+bw
-            // == boardW-1
-            int targetX1 = 1;
-            int targetX2 = board.getWidth() - 1 - bw;
-            int dist1 = (bx > targetX1) ? bx - targetX1 : targetX1 - bx;
-            int dist2 = (bx > targetX2) ? bx - targetX2 : targetX2 - bx;
-            dCol = (exits[e].getX() == 0) ? dist1 : dist2;
+          if (ori == 'V') {
+            int eX = exits[e].getX();
+            int eY = exits[e].getY();
+            int realTargetX1 = eX;
+            int realTargetX2 = eX;
+            if (eX < board.getWidth() / 2) {
+              for (int y = eY; y < eY + maxSize && y < board.getHeight(); y++) {
+                for (int x = eX; x < board.getWidth(); x++) {
+                  if (board.getCell(x, y) == 1) {
+                    if (x > realTargetX1) realTargetX1 = x;
+                    break;
+                  }
+                }
+              }
+              realTargetX1 += 1;
+              dCol = (bx > realTargetX1) ? bx - realTargetX1 : 0;
+            } else {
+              for (int y = eY; y < eY + maxSize && y < board.getHeight(); y++) {
+                for (int x = eX; x >= 0; x--) {
+                  if (board.getCell(x, y) == 1) {
+                    if (x < realTargetX2) realTargetX2 = x;
+                    break;
+                  }
+                }
+              }
+              realTargetX2 -= bw;
+              dCol = (bx < realTargetX2) ? realTargetX2 - bx : 0;
+            }
           } else {
-            // Salida en pared sup/inf. El bloque debe alinearse con el agujero
-            // [eCol, eCol + cs - 1] El bloque necesita bx >= eCol y bx + bw <=
-            // eCol + cs
             int validMinX = exits[e].getX();
             int validMaxX = exits[e].getX() + maxSize - bw;
             if (bx < validMinX)
@@ -281,18 +358,35 @@ void GameState::computeHeuristic() {
 
           // Distancia en Y (filas)
           int dRow = 0;
-          if (ori == 'V') {
-            // Salida en pared sup/inf. El bloque debe llegar a by == 1 o by+bh
-            // == boardH-1
-            int targetY1 = 1;
-            int targetY2 = board.getHeight() - 1 - bh;
-            int dist1 = (by > targetY1) ? by - targetY1 : targetY1 - by;
-            int dist2 = (by > targetY2) ? by - targetY2 : targetY2 - by;
-            dRow = (exits[e].getY() == 0) ? dist1 : dist2;
+          if (ori == 'H') {
+            int eX = exits[e].getX();
+            int eY = exits[e].getY();
+            int realTargetY1 = eY;
+            int realTargetY2 = eY;
+            if (eY < board.getHeight() / 2) {
+              for (int x = eX; x < eX + maxSize && x < board.getWidth(); x++) {
+                for (int y = eY; y < board.getHeight(); y++) {
+                  if (board.getCell(x, y) == 1) {
+                    if (y > realTargetY1) realTargetY1 = y;
+                    break;
+                  }
+                }
+              }
+              realTargetY1 += 1;
+              dRow = (by > realTargetY1) ? by - realTargetY1 : 0;
+            } else {
+              for (int x = eX; x < eX + maxSize && x < board.getWidth(); x++) {
+                for (int y = eY; y >= 0; y--) {
+                  if (board.getCell(x, y) == 1) {
+                    if (y < realTargetY2) realTargetY2 = y;
+                    break;
+                  }
+                }
+              }
+              realTargetY2 -= bh;
+              dRow = (by < realTargetY2) ? realTargetY2 - by : 0;
+            }
           } else {
-            // Salida en pared lateral. El bloque debe alinearse con el agujero
-            // [eRow, eRow + cs - 1] El bloque necesita by >= eRow y by + bh <=
-            // eRow + cs
             int validMinY = exits[e].getY();
             int validMaxY = exits[e].getY() + maxSize - bh;
             if (by < validMinY)
@@ -328,51 +422,146 @@ bool GameState::canEvacuate(int blockIndex, char &outDir, int &outDist) const {
     return false;
   const Block &b = board.getBlock(blockIndex);
   char blockColor = b.getColor();
+  
   int bx = b.getX();
   int by = b.getY();
   int bw = b.getWidth();
   int bh = b.getHeight();
-  int boardW = board.getWidth();
-  int boardH = board.getHeight();
-
+  bool* geom = b.getGeometry();
+  
   for (int e = 0; e < numExits; e++) {
     if (exits[e].getColor() != blockColor)
       continue;
+    
     int eCol = exits[e].getX();
     int eRow = exits[e].getY();
     char ori = exits[e].getOrientation();
     int cs = exits[e].getSizeAtStep(g);
 
-    if (ori == 'H') {
-      if (eCol == 0 && bx == 1) {
-        if (bh <= cs && by >= eRow && by + bh <= eRow + cs) {
-          outDir = 'L';
-          outDist = 1;
-          return true;
-        }
-      } else if (eCol == boardW - 1 && bx + bw == boardW - 1) {
-        if (bh <= cs && by >= eRow && by + bh <= eRow + cs) {
-          outDir = 'R';
-          outDist = 1;
-          return true;
-        }
-      }
-    } else if (ori == 'V') {
-      if (eRow == 0 && by == 1) {
-        if (bw <= cs && bx >= eCol && bx + bw <= eCol + cs) {
-          outDir = 'U';
-          outDist = 1;
-          return true;
-        }
-      } else if (eRow == boardH - 1 && by + bh == boardH - 1) {
-        if (bw <= cs && bx >= eCol && bx + bw <= eCol + cs) {
-          outDir = 'D';
-          outDist = 1;
-          return true;
+    int dx = 0, dy = 0;
+    char oDir = ' ';
+    if (ori == 'V') {
+      if (eCol < board.getWidth() / 2) { dx = -1; oDir = 'L'; }
+      else { dx = 1; oDir = 'R'; }
+    } else {
+      if (eRow < board.getHeight() / 2) { dy = -1; oDir = 'U'; }
+      else { dy = 1; oDir = 'D'; }
+    }
+
+    bool canStep = true;
+    bool touchesHole = false;
+
+    for (int r = 0; r < bh; r++) {
+      for (int c = 0; c < bw; c++) {
+        if (geom == nullptr || geom[r * bw + c]) {
+          int gX = bx + c + dx;
+          int gY = by + r + dy;
+          
+          if (gX < 0 || gX >= board.getWidth() || gY < 0 || gY >= board.getHeight()) {
+             // Completamente fuera del tablero
+             canStep = false; 
+          } else {
+             int cellVal = board.getCell(gX, gY);
+             if (cellVal == 1) { 
+                // Choca con pared, verificar si es exactamente el agujero
+                if (ori == 'V' && gY >= eRow && gY < eRow + cs) {
+                   touchesHole = true;
+                } else if (ori == 'H' && gX >= eCol && gX < eCol + cs) {
+                   touchesHole = true;
+                } else {
+                   canStep = false;
+                }
+             } else if (cellVal != 0 && cellVal != b.getID() + 10) {
+                // Choca con otro bloque
+                canStep = false;
+             }
+          }
         }
       }
     }
+
+    if (canStep && touchesHole) {
+      outDir = oDir;
+      outDist = 1;
+      return true;
+    }
   }
+  return false;
+}
+
+bool GameState::canJumpGate(int blockIndex, char &outDir, int &outDx, int &outDy) const {
+  if (evacuated[blockIndex] || numGates == 0 || gates == nullptr)
+    return false;
+
+  const Block &b = board.getBlock(blockIndex);
+  char blockColor = b.getColor();
+
+  int orig_bx = b.getX();
+  int orig_by = b.getY();
+  int orig_bw = b.getWidth();
+  int orig_bh = b.getHeight();
+  bool* geom = b.getGeometry();
+  int minCol = orig_bw, maxCol = -1;
+  int minRow = orig_bh, maxRow = -1;
+  for (int r = 0; r < orig_bh; r++) {
+      for (int c = 0; c < orig_bw; c++) {
+          if (geom == nullptr || geom[r * orig_bw + c]) {
+              if (c < minCol) minCol = c;
+              if (c > maxCol) maxCol = c;
+              if (r < minRow) minRow = r;
+              if (r > maxRow) maxRow = r;
+          }
+      }
+  }
+  int bx, by, bw, bh;
+  if (maxCol == -1) {
+      bx = orig_bx; by = orig_by; bw = orig_bw; bh = orig_bh;
+  } else {
+      bx = orig_bx + minCol;
+      by = orig_by + minRow;
+      bw = maxCol - minCol + 1;
+      bh = maxRow - minRow + 1;
+  }
+
+  for (int gi = 0; gi < numGates; gi++) {
+      const Gate& gate = gates[gi];
+      if (blockColor != gate.getColorAtStep(g)) continue;
+
+      char ori = gate.getOrientation();
+      int gLen = gate.getLength();
+      int gx = gate.getX();
+      int gy = gate.getY();
+
+      outDx = 0; outDy = 0;
+      outDir = ' ';
+
+      if (ori == 'H') {
+          if (bw <= gLen && bx >= gx && bx + bw - 1 <= gx + gLen - 1) {
+              if (by + bh == gy) {
+                  outDy = bh + 1;
+                  outDir = 'D';
+              } else if (by == gy + 1) {
+                  outDy = -bh - 1;
+                  outDir = 'U';
+              }
+          }
+      } else if (ori == 'V') {
+          if (bh <= gLen && by >= gy && by + bh - 1 <= gy + gLen - 1) {
+              if (bx + bw == gx) {
+                  outDx = bw + 1;
+                  outDir = 'R';
+              } else if (bx == gx + 1) {
+                  outDx = -bw - 1;
+                  outDir = 'L';
+              }
+          }
+      }
+
+      if (outDir != ' ') {
+          return true; // Se encontró una compuerta válida para saltar
+      }
+  }
+
   return false;
 }
 
@@ -383,31 +572,22 @@ bool GameState::canEvacuate(int blockIndex, char &outDir, int &outDist) const {
 void GameState::printBoard() const {
   int w = board.getWidth();
   int h = board.getHeight();
+  
+  // Encontrar limites reales de los muros
+  std::vector<int> firstWallRow(h, w), lastWallRow(h, -1);
+  std::vector<int> firstWallCol(w, h), lastWallCol(w, -1);
   for (int y = 0; y < h; y++) {
-    // Encontrar los limites de las paredes en esta fila
-    int firstWall = w;
-    int lastWall = -1;
     for (int x = 0; x < w; x++) {
-      int val = board.getCell(x, y);
-      bool isExit = false;
-      for (int e = 0; e < numExits; e++) {
-        int ex = exits[e].getX();
-        int ey = exits[e].getY();
-        char ori = exits[e].getOrientation();
-        int cs = exits[e].getSizeAtStep(g);
-        if (ori == 'V' && y == ey && x >= ex && x < ex + cs)
-          isExit = true;
-        if (ori == 'H' && x == ex && y >= ey && y < ey + cs)
-          isExit = true;
-      }
-      if (val == 1 || isExit) {
-        if (x < firstWall)
-          firstWall = x;
-        if (x > lastWall)
-          lastWall = x;
+      if (board.getCell(x, y) == 1) {
+        if (x < firstWallRow[y]) firstWallRow[y] = x;
+        if (x > lastWallRow[y]) lastWallRow[y] = x;
+        if (y < firstWallCol[x]) firstWallCol[x] = y;
+        if (y > lastWallCol[x]) lastWallCol[x] = y;
       }
     }
+  }
 
+  for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       char exitColor = ' ';
       for (int e = 0; e < numExits; e++) {
@@ -416,14 +596,40 @@ void GameState::printBoard() const {
         char ori = exits[e].getOrientation();
         int cs = exits[e].getSizeAtStep(g);
 
-        if (ori == 'V') { // Movimiento vertical -> agujero horizontal
-          if (y == ey && x >= ex && x < ex + cs) {
-            exitColor = exits[e].getColor();
+        if (ori == 'V') { // Salida en pared lateral
+          if (y >= ey && y < ey + cs) {
+             if (ex < w / 2 && x == firstWallRow[y]) {
+                exitColor = exits[e].getColor(); break;
+             } else if (ex >= w / 2 && x == lastWallRow[y]) {
+                exitColor = exits[e].getColor(); break;
+             }
+          }
+        } else if (ori == 'H') { // Salida en pared superior/inferior
+          if (x >= ex && x < ex + cs) {
+             if (ey < h / 2 && y == firstWallCol[x]) {
+                exitColor = exits[e].getColor(); break;
+             } else if (ey >= h / 2 && y == lastWallCol[x]) {
+                exitColor = exits[e].getColor(); break;
+             }
+          }
+        }
+      }
+
+      char gateColor = ' ';
+      for (int gi = 0; gi < numGates; gi++) {
+        int gx = gates[gi].getX();
+        int gy = gates[gi].getY();
+        char gori = gates[gi].getOrientation();
+        int glen = gates[gi].getLength();
+
+        if (gori == 'H') { 
+          if (y == gy && x >= gx && x < gx + glen) {
+            gateColor = gates[gi].getColorAtStep(g);
             break;
           }
-        } else if (ori == 'H') { // Movimiento horizontal -> agujero vertical
-          if (x == ex && y >= ey && y < ey + cs) {
-            exitColor = exits[e].getColor();
+        } else if (gori == 'V') { 
+          if (x == gx && y >= gy && y < gy + glen) {
+            gateColor = gates[gi].getColorAtStep(g);
             break;
           }
         }
@@ -431,13 +637,18 @@ void GameState::printBoard() const {
 
       if (exitColor != ' ') {
         std::cout << exitColor;
+      } else if (gateColor != ' ') {
+        if (gateColor >= 'A' && gateColor <= 'Z') {
+          std::cout << (char)(gateColor + 32);
+        } else {
+          std::cout << gateColor;
+        }
       } else {
         int val = board.getCell(x, y);
         if (val == 1) {
           std::cout << '#';
         } else if (val == 0) {
-          // Si esta fuera de los muros, imprimir espacio en lugar de '.'
-          if (x < firstWall || x > lastWall) {
+          if (x < firstWallRow[y] || x > lastWallRow[y]) {
             std::cout << ' ';
           } else {
             std::cout << '.';

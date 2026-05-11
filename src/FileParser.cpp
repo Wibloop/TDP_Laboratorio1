@@ -6,64 +6,63 @@
 
 // Implementacion del FileParser
 
-// Metodo: Constructor
-// Descripcion: Inicializa atributos por defecto
+// Prepara las estructuras internas para la decodificacion de los datos del fichero
 FileParser::FileParser() {
-  levelName[0] = '\0';
-  width = 0;
-  height = 0;
-  stepLimit = 50;
-  board = nullptr;
-  exits = nullptr;
-  numExits = 0;
-  exitCapacity = 10;
-  gates = nullptr;
-  numGates = 0;
-  gateCapacity = 10;
+  levelName[0] = '\0'; // Inicializamos el nombre vacio
+  width = 0;           // Ancho por defecto
+  height = 0;          // Alto por defecto
+  stepLimit = 50;      // Limite de pasos por defecto
+  board = nullptr;     // Puntero nulo por seguridad
+  exits = nullptr;     // Puntero nulo por seguridad
+  numExits = 0;        // Contador a cero
+  exitCapacity = 10;   // Capacidad inicial del arreglo de salidas
+  gates = nullptr;     // Puntero nulo por seguridad
+  numGates = 0;        // Contador a cero
+  gateCapacity = 10;   // Capacidad inicial del arreglo de compuertas
 }
 
-// Metodo: Destructor
-// Descripcion: No libera board ni exits porque la propiedad se transfiere
-//   al GameState retornado por parse().
+// Las limpiezas de arreglos dinamicos como el tablero y las salidas se transfieren al estado
+// Por tanto el parser jamas las elimina aca
 FileParser::~FileParser() {
   // La memoria se transfiere al GameState; no liberar aqui
 }
 
-// Metodo: skipSpaces
-// Descripcion: Avanza el indice pos saltando espacios y tabs
+// Avanza silenciosamente el cursor del buffer de lectura mientras se tope con espacios o saltos de tabulador
 void FileParser::skipSpaces(const char *str, int &pos) {
   while (str[pos] == ' ' || str[pos] == '\t') {
-    pos++;
+    pos++; // Avanzar la posicion si hay espacio o tabulacion
   }
 }
 
-// Metodo: parseInt
-// Descripcion: Lee un entero desde la posicion actual del string.
-//   Maneja signo negativo y avanza pos hasta despues del ultimo digito.
+// Procesa y devuelve un numero entero leyendo caracter a caracter
+// Se salta los espacios en blanco y aplica el signo si detecta un guion
 int FileParser::parseInt(const char *str, int &pos) {
-  skipSpaces(str, pos);
-  int sign = 1;
+  skipSpaces(str, pos); // Ignorar espacios antes del numero
+  int sign = 1; // Por defecto es positivo
+  
+  // Revisamos si es un numero negativo
   if (str[pos] == '-') {
     sign = -1;
     pos++;
   }
+  
   int result = 0;
+  // Mientras sea un caracter numerico (0-9), lo acumulamos
   while (str[pos] >= '0' && str[pos] <= '9') {
     result = result * 10 + (str[pos] - '0');
     pos++;
   }
-  return result * sign;
+  
+  return result * sign; // Retornamos el numero aplicando su signo
 }
 
-// Metodo: parseChar
-// Descripcion: Lee un caracter desde la posicion actual
+// Devuelve el primer caracter no blanco que encuentra a partir del indice proporcionado
 char FileParser::parseChar(const char *str, int &pos) {
-  skipSpaces(str, pos);
-  return str[pos++];
+  skipSpaces(str, pos); // Ignorar espacios
+  return str[pos++]; // Retornar el caracter y luego avanzar la posicion
 }
 
-// Metodo: startsWith
-// Descripcion: Retorna true si str comienza con prefix
+// Verifica si la cadena principal arranca con un prefijo especifico
 bool FileParser::startsWith(const char *str, const char *prefix) {
   int i = 0;
   while (prefix[i] != '\0') {
@@ -74,8 +73,7 @@ bool FileParser::startsWith(const char *str, const char *prefix) {
   return true;
 }
 
-// Metodo: parseMeta
-// Descripcion: Extrae atributos de lineas tipo "KEY = VALUE" en seccion [META]
+// Identifica la clave dentro de las configuraciones meta y le asigna su valor correspondiente
 void FileParser::parseMeta(const char *line) {
   if (startsWith(line, "NAME")) {
     // Buscar '=' y copiar el valor
@@ -119,28 +117,30 @@ void FileParser::parseMeta(const char *line) {
   }
 }
 
-// Metodo: parseBlock
-// Descripcion: Parsea una linea de bloque con formato:
-//   ID COLOR=x WIDTH=w HEIGHT=h INIT_X=x INIT_Y=y GEOMETRY=0 1 0 1 ...
-//   Crea un Block y lo agrega al board.
+// Lee la informacion de la linea correspondiente a un bloque y la parsea
+// Extrae el ID el color y sus coordenadas fisicas
+// Recuerda que el documento asume que X es la fila y Y es la columna
 void FileParser::parseBlock(const char *line) {
   int pos = 0;
-  // Leer ID
+  
+  // Leer el ID del bloque (es el primer numero en la linea)
   int id = parseInt(line, pos);
   skipSpaces(line, pos);
 
-  // Leer COLOR=x
+  // Variables para guardar las propiedades del bloque
   char color = ' ';
-  int bwidth = 0, bheight = 0, initX = 0, initY = 0;
+  int bwidth = 0, bheight = 0;
+  int initX = 0; // Guardara la columna (Y del archivo)
+  int initY = 0; // Guardara la fila (X del archivo)
 
-  // Parsear pares KEY=VALUE
+  // Bucle para parsear todos los pares KEY=VALUE hasta fin de linea
   while (line[pos] != '\0' && line[pos] != '\n' && line[pos] != '\r') {
     skipSpaces(line, pos);
     if (line[pos] == '\0' || line[pos] == '\n' || line[pos] == '\r')
-      break;
+      break; // Salir si llegamos al final
 
     if (startsWith(line + pos, "COLOR=")) {
-      pos += 6;
+      pos += 6; // Avanzar despues de "COLOR="
       color = line[pos++];
     } else if (startsWith(line + pos, "WIDTH=")) {
       pos += 6;
@@ -150,19 +150,24 @@ void FileParser::parseBlock(const char *line) {
       bheight = parseInt(line, pos);
     } else if (startsWith(line + pos, "INIT_X=")) {
       pos += 7;
-      initY = parseInt(line, pos); // X en el archivo son las filas (Y interno)
+      // El archivo usa INIT_X para las FILAS.
+      // Nuestro tablero usa y=Fila. Asignamos a initY.
+      initY = parseInt(line, pos); 
     } else if (startsWith(line + pos, "INIT_Y=")) {
       pos += 7;
-      initX =
-          parseInt(line, pos); // Y en el archivo son las columnas (X interno)
+      // El archivo usa INIT_Y para las COLUMNAS.
+      // Nuestro tablero usa x=Columna. Asignamos a initX.
+      initX = parseInt(line, pos); 
     } else if (startsWith(line + pos, "GEOMETRY=")) {
       pos += 9;
-      // Crear el bloque primero
+      // Cuando encontramos GEOMETRY, ya tenemos lo necesario para instanciar el bloque
       Block b(id, color, bwidth, bheight, initX, initY);
-      // Leer la geometria: arreglo de 0s y 1s separados por espacio
+      
+      // Creamos el arreglo que guardara la forma del bloque
       bool *geom = new bool[bwidth * bheight];
       for (int i = 0; i < bwidth * bheight; i++) {
         skipSpaces(line, pos);
+        // Cada '1' es un espacio ocupado, '0' es vacio
         if (line[pos] == '1') {
           geom[i] = true;
         } else {
@@ -170,22 +175,23 @@ void FileParser::parseBlock(const char *line) {
         }
         pos++;
       }
+      
+      // Le pasamos la geometria al bloque y lo guardamos
       b.setGeometry(geom);
       board->addBlock(b);
-      return;
+      return; // Fin del parseo para esta linea
     } else {
-      pos++; // Saltar caracter desconocido
+      pos++; // Saltar caracteres desconocidos para evitar bucles infinitos
     }
   }
 
-  // Si no se encontro GEOMETRY, crear bloque con geometria default (todo true)
+  // En caso de que no haya GEOMETRY, se asume un bloque lleno (default)
   Block b(id, color, bwidth, bheight, initX, initY);
   board->addBlock(b);
 }
 
 // Metodo: parseWallLine
-// Descripcion: Procesa una fila del mapa de paredes. Cada '#' se agrega como
-// pared.
+// Mapea los caracteres de muralla detectados en el texto y los inserta en la matriz del tablero
 void FileParser::parseWallLine(const char *line, int row) {
   for (int col = 0; line[col] != '\0' && line[col] != '\n' &&
                     line[col] != '\r' && col < width;
@@ -196,114 +202,126 @@ void FileParser::parseWallLine(const char *line, int row) {
   }
 }
 
-// Metodo: parseExit
-// Descripcion: Parsea una linea de salida con formato:
-//   COLOR=x X=n Y=n ORIENTATION=H LI=n LF=n STEP=n
+// Extrae todos los parametros de una linea de salida
+// El texto especifica color orientacion pasos de la puerta y sus dimensiones
+// Es vital notar que la X pasa a ser la fila del tablero y la Y su columna
 void FileParser::parseExit(const char *line) {
   int pos = 0;
   char color = ' ';
-  int x = 0, y = 0, li = 0, lf = 0, step = 0;
-  char orientation = 'H';
+  int x = 0; // Columna (asignado por Y=)
+  int y = 0; // Fila (asignado por X=)
+  int li = 0, lf = 0, step = 0;
+  char orientation = 'H'; // Orientacion por defecto
 
+  // Bucle de parseo de propiedades de la salida
   while (line[pos] != '\0' && line[pos] != '\n' && line[pos] != '\r') {
     skipSpaces(line, pos);
     if (line[pos] == '\0' || line[pos] == '\n' || line[pos] == '\r')
-      break;
+      break; // Detenerse al final de linea
 
     if (startsWith(line + pos, "COLOR=")) {
       pos += 6;
-      color = line[pos++];
+      color = line[pos++]; // Extraer el color especifico
     } else if (startsWith(line + pos, "ORIENTATION=")) {
       pos += 12;
-      char fileOri = line[pos++];
-      // Si el agujero es horizontal (H), el movimiento es vertical (V interno)
-      orientation = (fileOri == 'H') ? 'V' : 'H';
+      orientation = line[pos++]; // 'H' o 'V'
     } else if (startsWith(line + pos, "LI=")) {
       pos += 3;
-      li = parseInt(line, pos);
+      li = parseInt(line, pos); // Largo inicial de la puerta
     } else if (startsWith(line + pos, "LF=")) {
       pos += 3;
-      lf = parseInt(line, pos);
+      lf = parseInt(line, pos); // Largo final de la puerta
     } else if (startsWith(line + pos, "STEP=")) {
       pos += 5;
-      step = parseInt(line, pos);
+      step = parseInt(line, pos); // Pasos para que se abra
     } else if (startsWith(line + pos, "X=")) {
       pos += 2;
-      y = parseInt(line, pos); // X en archivo = Fila (Y interno)
+      // En los .txt, X indica la FILA (y)
+      y = parseInt(line, pos);
     } else if (startsWith(line + pos, "Y=")) {
       pos += 2;
-      x = parseInt(line, pos); // Y en archivo = Columna (X interno)
+      // En los .txt, Y indica la COLUMNA (x)
+      x = parseInt(line, pos);
     } else {
-      pos++;
+      pos++; // Saltar caracteres basura
     }
   }
 
-  // Redimensionar si es necesario
+  // Verificamos si tenemos capacidad suficiente, si no, duplicamos
   if (numExits >= exitCapacity) {
     exitCapacity *= 2;
     Exit *newExits = new Exit[exitCapacity];
     for (int i = 0; i < numExits; i++)
       newExits[i] = exits[i];
-    delete[] exits;
-    exits = newExits;
+    delete[] exits; // Liberar la memoria antigua
+    exits = newExits; // Apuntar al nuevo arreglo expandido
   }
 
+  // Agregamos la nueva salida al arreglo
   exits[numExits] = Exit(color, x, y, orientation, li, lf, step);
   numExits++;
 }
 
-// Metodo: parseGate
-// Descripcion: Parsea una linea de compuerta con formato:
-//   X=n Y=n ORIENTATION=H LI=n CI=c CF=c STEP=n
-//   Crea un Gate y lo agrega al arreglo de compuertas.
+// Procesa una linea de compuerta ignorando el color general pero rescatando color inicial y final
+// Al igual que los bloques convierte la coordenada X en la fila y la Y en la columna
 void FileParser::parseGate(const char *line) {
   int pos = 0;
-  int x = 0, y = 0, li = 0, step = 0;
+  int x = 0; // Columna (Y del archivo)
+  int y = 0; // Fila (X del archivo)
+  int li = 0, step = 0;
   char orientation = 'H';
   char ci = ' ', cf = ' ';
 
+  // Bucle de lectura de las propiedades
   while (line[pos] != '\0' && line[pos] != '\n' && line[pos] != '\r') {
     skipSpaces(line, pos);
     if (line[pos] == '\0' || line[pos] == '\n' || line[pos] == '\r')
-      break;
+      break; // Salimos al llegar al final
 
-    if (startsWith(line + pos, "ORIENTATION=")) {
+    if (startsWith(line + pos, "COLOR=")) {
+      // Ignoramos COLOR= ya que la compuerta se rige por CI (color inicial) 
+      // y CF (color final). Saltamos el tag y su valor.
+      pos += 6;
+      pos++; // Saltar la letra del color
+    } else if (startsWith(line + pos, "ORIENTATION=")) {
       pos += 12;
-      char fileOri = line[pos++];
-      orientation = (fileOri == 'H') ? 'V' : 'H';
+      orientation = line[pos++];
     } else if (startsWith(line + pos, "LI=")) {
       pos += 3;
-      li = parseInt(line, pos);
+      li = parseInt(line, pos); // Largo inicial de la compuerta
     } else if (startsWith(line + pos, "CI=")) {
       pos += 3;
-      ci = line[pos++];
+      ci = line[pos++]; // Color inicial permitido
     } else if (startsWith(line + pos, "CF=")) {
       pos += 3;
-      cf = line[pos++];
+      cf = line[pos++]; // Color final permitido luego de que pase el CI
     } else if (startsWith(line + pos, "STEP=")) {
       pos += 5;
-      step = parseInt(line, pos);
+      step = parseInt(line, pos); // Pasos para activacion
     } else if (startsWith(line + pos, "X=")) {
       pos += 2;
-      y = parseInt(line, pos); // X en archivo = Fila (Y interno)
+      // En los .txt, X indica la FILA (y)
+      y = parseInt(line, pos);
     } else if (startsWith(line + pos, "Y=")) {
       pos += 2;
-      x = parseInt(line, pos); // Y en archivo = Columna (X interno)
+      // En los .txt, Y indica la COLUMNA (x)
+      x = parseInt(line, pos);
     } else {
-      pos++;
+      pos++; // Evitar atascarse en caracteres no reconocidos
     }
   }
 
-  // Redimensionar si es necesario
+  // Redimensionar el arreglo si llegamos a su limite
   if (numGates >= gateCapacity) {
     gateCapacity *= 2;
     Gate *newGates = new Gate[gateCapacity];
     for (int i = 0; i < numGates; i++)
       newGates[i] = gates[i];
-    delete[] gates;
+    delete[] gates; // Limpiamos el arreglo viejo
     gates = newGates;
   }
 
+  // Instanciamos la compuerta y la añadimos a nuestro arreglo
   gates[numGates] = Gate(x, y, orientation, li, ci, cf, step);
   numGates++;
 }

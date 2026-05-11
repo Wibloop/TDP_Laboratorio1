@@ -1,21 +1,9 @@
 #include <iostream>
 #include "Block.h"
 
-// Generamos dos archivos distintos, los .h y los .cpp
-// Esto con el fin de separar la declaracion de la implementacion
-// Separar el QUE del COMO se hace o ejecuta una accion
-// El archivo .cpp lo usamos para la implementacion de la clase
+// Generamos la separacion logica de implementacion en este fichero cpp
 
-// Nombre del metodo
-// Descripcion detallada de lo que hace
-// Los parametros que recibe la funcion
-// El retorno (que tipo de dato devuelve)
-
-// Metodo: Constructor por defecto -> Block
-// Descripcion: Crea un Block sin inicializar (valores por defecto).
-//              Necesario para poder crear arreglos dinamicos de Block.
-// Parametros: Ninguno
-// Retorna: void
+// Constructor default que instancia un bloque en estado seguro nulo
 Block::Block() {
     // Se inicializan todos los campos con valores nulos/por defecto
     // para evitar accesos a memoria basura si se usa antes de asignar.
@@ -28,18 +16,8 @@ Block::Block() {
     geometry = nullptr; // nullptr indica que no hay geometria asignada aun
 }
 
-// Metodo: Constructor -> Block
-// Descripcion: Inicializa el objeto Block con los valores proporcionados
-//              y reserva memoria para la geometria (todo en true por defecto).
-// Parametros:
-//      - int id: ID del Block creado
-//      - char color: Color del Block creado
-//      - int width: Ancho del Block creado
-//      - int height: Largo del Block creado
-//      - int x: Posicion esquina inicial del Block (X,Y)
-//      - int y: Posicion esquina inicial del Block (X,Y)
-// Retorna:
-//      - void
+// Constructor principal que fija identificador y color ademas de localizarlo en el mapa
+// Reserva memoria en el heap para la matriz aplanada de colisiones del bloque llenandola toda en 1
 
 Block::Block(int id, char color, int width, int height, int x, int y) {
     
@@ -61,15 +39,8 @@ Block::Block(int id, char color, int width, int height, int x, int y) {
     }
 }
 
-// Metodo: Constructor de copia -> Block
-// Descripcion: Crea una copia profunda (deep copy) de otro Block.
-//              Es fundamental para el A* porque cada estado del juego
-//              necesita su propia copia independiente de los bloques.
-//              Sin deep copy, multiples estados compartiran la misma memoria
-//              y modificar un estado corrompera los demas.
-// Parametros:
-//      - const Block& other: Referencia constante al Block a copiar
-// Retorna: void
+// Constructor de copia para poder instanciar un bloque identico con su propia matriz
+// Protege el heap para evitar que los estados compartan los punteros de la malla logica
 Block::Block(const Block& other) {
     // Copiamos todos los atributos primitivos directamente
     id = other.id;
@@ -93,14 +64,8 @@ Block::Block(const Block& other) {
     }
 }
 
-// Metodo: Operador de asignacion -> operator=
-// Descripcion: Asigna los valores de otro Block a este, liberando la memoria
-//              previa y haciendo deep copy de la geometria.
-//              Patron "copy and assign" seguro contra auto-asignacion.
-// Parametros:
-//      - const Block& other: El Block fuente
-// Retorna:
-//      - Block&: Referencia a este Block (permite encadenamiento a = b = c)
+// Asigna atributos liberando la memoria de la matriz anterior y clonando la del objetivo
+// Protegido contra casos donde un bloque se asigne a si mismo
 Block& Block::operator=(const Block& other) {
     // Proteccion contra auto-asignacion: si a = a, no hacer nada
     if (this == &other) {
@@ -132,120 +97,69 @@ Block& Block::operator=(const Block& other) {
     return *this;
 }
 
-// Metodo: Destructor -> ~Block
-// Descripcion: Libera memoria de los atributos
-// Parametros: Ninguno
-// Retorna:
-//      - void
+// Destructor encargado de limpiar la geometria alojada en memoria dinamica
 
 Block::~Block() {
     delete[] geometry;
 }
 
-// Metodo: getID
-// Descripcion: Entrega el ID del Block
-// Parametros: Ninguno
-// Retorna:
-//     - int id
+// Retorna el identificador unico del bloque
 
 int Block::getID() const {
     return id;
 }
 
-// Metodo: getColor
-// Descripcion: Entrega el color del Block
-// Parametros: Ninguno
-// Retorna:
-//    - char color;
+// Retorna el color asignado a este bloque en formato char
 
 char Block::getColor() const {
     return color;
 }
 
-// Metodo: getX
-// Descripcion: Entrega la posicion en X del Block
-// Parametros: Ninguno
-// Retorna:
-//    - int X;
+// Devuelve la posicion X logica del bloque
 
 int Block::getX() const {
     return x;
 }
 
-// Metodo: getY
-// Descripcion: Entrega la posicion en Y del Block
-// Parametros: Ninguno
-// Retorna:
-//    - int Y;
+// Devuelve la posicion Y logica del bloque
 
 int Block::getY() const {
     return y;
 }
 
 
-// Metodo: getWidth
-// Descripcion: Entrega el ancho del Block
-// Parametros: Ninguno
-// Retorna:
-//    - int width;
+// Devuelve el ancho fisico del bloque
 
 int Block::getWidth() const {
     return width;
 }
 
-// Metodo: getHeight
-// Descripcion: Entrega el largo del Block
-// Parametros: Ninguno
-// Retorna:
-//    - int height;
+// Devuelve el largo fisico del bloque
 
 int Block::getHeight() const {
     return height;
 }
 
-// Metodo: getGeometry
-// Descripcion: Retorna el puntero al arreglo de geometria del bloque.
-//              Permite a otras clases (como GameState) consultar
-//              que celdas del bounding box estan realmente ocupadas.
-// Parametros: Ninguno
-// Retorna:
-//    - bool*: Puntero al arreglo de geometria (lectura)
+// Retorna el puntero directo al booleano de la geometria del bloque
 
 bool* Block::getGeometry() const {
     return geometry;
 }
 
-// Metodo: setX
-// Descripcion: Cambia la posicion x del Block
-// Parametros:
-//    - int newX: El nuevo valor de X
-// Retorna:
-//    - void
+// Cambia la coordenada logica x del bloque
 
 void Block::setX(int newX) {
     x = newX;
 }
 
-// Metodo: setY
-// Descripcion: Cambia la posicion y del Block
-// Parametros:
-//    - int newY: El nuevo valor de Y
-// Retorna:
-//    - void
+// Cambia la coordenada logica y del bloque
 
 void Block::setY(int newY) {
     y = newY;
 }
 
-// Metodo: setGeometry
-// Descripcion: Reemplaza la geometria actual por una nueva.
-//              Libera la geometria anterior y asigna el nuevo puntero.
-//              IMPORTANTE: El puntero pasado debe haber sido creado con new[],
-//              pues Block se encargara de liberarlo en su destructor.
-// Parametros:
-//    - bool* geom: Puntero al nuevo arreglo de geometria
-// Retorna:
-//    - void
+// Intercambia la matriz logica interna de geometria liberando la memoria previa
+// Asume propiedad total del puntero recibido por lo que este debe crearse con new
 
 void Block::setGeometry(bool* geom) {
     // Liberamos la geometria previa si existia
@@ -267,16 +181,8 @@ void Block::move(int newX, int newY) {
     y = newY;
 }
 
-// Metodo: occupies
-// Descripcion: Verifica si este bloque ocupa la celda global (gx, gy).
-//              Primero chequea si (gx, gy) esta dentro del bounding box del bloque,
-//              luego consulta la geometria para ver si esa celda especifica esta llena.
-//              Esto es crucial para la deteccion de colisiones durante los movimientos.
-// Parametros:
-//    - int gx: Coordenada X global en el tablero
-//    - int gy: Coordenada Y global en el tablero
-// Retorna:
-//    - bool: true si el bloque ocupa esa celda, false en caso contrario
+// Verifica si el bloque esta ocupando la celda logica global
+// Primero revisa que este dentro de la caja para luego evaluar la matriz de geometria
 
 bool Block::occupies(int gx, int gy) const {
     // Convertimos la coordenada global a local restando la posicion del bloque
@@ -298,14 +204,8 @@ bool Block::occupies(int gx, int gy) const {
     return geometry[localY * width + localX];
 }
 
-// Metodo: operator==
-// Descripcion: Compara dos bloques para determinar si representan el mismo
-//              estado. Dos bloques son iguales si tienen el mismo ID y la misma
-//              posicion. Se usa para comparar estados del juego en A*.
-// Parametros:
-//    - const Block& other: El otro bloque a comparar
-// Retorna:
-//    - bool: true si son iguales, false si no
+// Compara este bloque con otro basandose en el id de forma y las coordenadas fisicas actuales
+// Fundamental para identificar estados duplicados en AStar
 
 bool Block::operator==(const Block& other) const {
     return id == other.id && x == other.x && y == other.y;
